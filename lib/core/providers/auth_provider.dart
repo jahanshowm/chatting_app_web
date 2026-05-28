@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:randomchat_admin/core/config/app_env.dart';
 import 'package:randomchat_admin/core/network/api_client.dart';
+import 'package:randomchat_admin/core/network/api_exception.dart';
 import 'package:randomchat_admin/core/network/token_storage.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
@@ -61,8 +63,15 @@ class AuthNotifier extends Notifier<AuthState> {
       state = AuthState(admin: AdminUser.fromJson(adminJson));
       return true;
     } catch (e) {
-      state = AuthState(error: e.toString());
+      final message = e is ApiException
+          ? e.message
+          : '로그인 중 오류가 발생했습니다. API 주소(${AppEnv.apiBaseUrl})와 백엔드 실행 여부를 확인해주세요.';
+      state = AuthState(error: message);
       return false;
+    } finally {
+      if (state.loading) {
+        state = state.copyWith(loading: false);
+      }
     }
   }
 

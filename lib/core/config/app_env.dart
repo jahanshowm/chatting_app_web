@@ -8,6 +8,6 @@ class AppEnv {
   static String get apiBaseUrl {
     final raw = dotenv.env['API_BASE_URL']?.trim();
     if (raw != null && raw.isNotEmpty) return raw;
-    return 'http://13.209.176.251:3000';
+    return 'http://localhost:3000';
   }
 }

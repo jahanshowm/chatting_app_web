@@ -1,17 +1,19 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:randomchat_admin/core/navigation/admin_menu.dart';
+import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
 import 'package:randomchat_admin/shared/widgets/admin_common.dart';
-import 'package:randomchat_admin/shared/widgets/admin_shell.dart';
+import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 
 class InquiryListScreen extends ConsumerStatefulWidget {
-  const InquiryListScreen({super.key, this.withdrawn = false});
+  const InquiryListScreen({super.key, this.withdrawn = false, this.userId});
 
   final bool withdrawn;
+  final String? userId;
 
   @override
   ConsumerState<InquiryListScreen> createState() => _InquiryListScreenState();
@@ -19,9 +21,12 @@ class InquiryListScreen extends ConsumerStatefulWidget {
 
 class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
   final _keyword = TextEditingController();
+  Set<String> _statusFilter = {'all'};
   int _page = 1;
   PaginatedResult<Map<String, dynamic>>? _data;
   bool _loading = true;
+
+  AdminScreenSpec get _spec => widget.withdrawn ? inquiryWithdrawnSpec : inquiryActiveSpec;
 
   @override
   void initState() {
@@ -30,9 +35,25 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
   }
 
   @override
+  void didUpdateWidget(InquiryListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.withdrawn != widget.withdrawn) {
+      _page = 1;
+      _keyword.clear();
+      _statusFilter = {'all'};
+      _load();
+    }
+  }
+
+  @override
   void dispose() {
     _keyword.dispose();
     super.dispose();
+  }
+
+  List<String>? get _apiStatuses {
+    if (_statusFilter.contains('all') || _statusFilter.isEmpty) return null;
+    return _statusFilter.toList();
   }
 
   Future<void> _load() async {
@@ -42,6 +63,8 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
             page: _page,
             keyword: _keyword.text.trim(),
             withdrawn: widget.withdrawn,
+            statuses: _apiStatuses,
+            userId: widget.userId,
           );
       if (!mounted) return;
       setState(() {
@@ -55,88 +78,113 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
     }
   }
 
+  void _openDetail(String id) {
+    final from = widget.withdrawn ? '/inquiries/withdrawn' : '/inquiries/active';
+    adminNavigateReplace(
+      ref,
+      '/inquiries/$id?from=${Uri.encodeComponent(from)}',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AdminShell(
-      title: widget.withdrawn ? '문의내역 (탈퇴회원)' : '문의내역',
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!widget.withdrawn)
-              Wrap(
-                spacing: 8,
-                children: [
-                  ActionChip(
-                    label: const Text('활동 회원'),
-                    onPressed: () => context.go('/inquiries'),
-                  ),
-                  ActionChip(
-                    label: const Text('탈퇴 회원'),
-                    onPressed: () => context.go('/inquiries/withdrawn'),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _keyword,
-                    decoration: const InputDecoration(hintText: '이름 또는 제목 검색'),
-                    onSubmitted: (_) => _load(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(onPressed: _load, child: const Text('검색')),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : DataTable2(
-                      columnSpacing: 12,
-                      minWidth: 900,
-                      headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
-                      columns: const [
-                        DataColumn2(label: Text('성별')),
-                        DataColumn2(label: Text('이름')),
-                        DataColumn2(label: Text('제목')),
-                        DataColumn2(label: Text('일자')),
-                        DataColumn2(label: Text('상태')),
-                        DataColumn2(label: Text('상세')),
-                      ],
-                      rows: (_data?.items ?? []).map((row) {
-                        final id = row['id'] as String;
-                        return DataRow(cells: [
-                          DataCell(Text('${row['gender'] ?? '-'}')),
-                          DataCell(Text('${row['name'] ?? '-'}')),
-                          DataCell(Text('${row['title'] ?? '-'}')),
-                          DataCell(Text('${row['date'] ?? '-'}')),
-                          DataCell(Text('${row['status'] ?? '-'}')),
-                          DataCell(
-                            TextButton(
-                              onPressed: () => context.go('/inquiries/$id'),
-                              child: const Text('보기'),
-                            ),
-                          ),
-                        ]);
-                      }).toList(),
-                    ),
-            ),
-            PaginationBar(
-              page: _page,
-              totalPages: _data?.totalPages ?? 1,
-              onPageChanged: (p) {
-                setState(() => _page = p);
-                _load();
-              },
-            ),
-          ],
-        ),
+    final spec = _spec;
+    final items = _data?.items ?? [];
+
+    return AdminContentArea(
+      toolbar: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InquiryStatusFilterBar(
+            selected: _statusFilter,
+            onChanged: (next) {
+              setState(() {
+                _statusFilter = next;
+                _page = 1;
+              });
+              _load();
+            },
+          ),
+          const SizedBox(height: 16),
+          SearchFilterBar(
+            filter: 'all',
+            filters: const [],
+            keywordController: _keyword,
+            hint: spec.searchHint,
+            useSearchIcon: true,
+            onSearch: () {
+              setState(() => _page = 1);
+              _load();
+            },
+          ),
+        ],
       ),
+      child: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : items.isEmpty
+              ? const AdminEmptyList()
+              : Column(
+                  children: [
+                    Expanded(
+                      child: DataTable2(
+                        columnSpacing: 12,
+                        minWidth: 960,
+                        headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+                        columns: const [
+                          DataColumn2(label: Text('성별')),
+                          DataColumn2(label: Text('이름')),
+                          DataColumn2(label: Text('문의제목')),
+                          DataColumn2(label: Text('일자')),
+                          DataColumn2(label: Text('처리상태')),
+                        ],
+                        rows: items.map((row) {
+                          final id = row['id'] as String;
+                          return DataRow2(
+                            onTap: () => _openDetail(id),
+                            cells: [
+                              DataCell(Text('${row['gender'] ?? '-'}')),
+                              DataCell(Text('${row['name'] ?? '-'}')),
+                              DataCell(Text('${row['title'] ?? '-'}')),
+                              DataCell(Text('${row['date'] ?? '-'}')),
+                              DataCell(_StatusBadge(label: '${row['status'] ?? '-'}')),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    PaginationBar(
+                      page: _page,
+                      totalPages: _data?.totalPages ?? 1,
+                      onPageChanged: (p) {
+                        setState(() => _page = p);
+                        _load();
+                      },
+                    ),
+                  ],
+                ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    Color color = AppColors.textSecondary;
+    if (label.contains('대기')) color = const Color(0xFF999999);
+    if (label.contains('진행')) color = const Color(0xFF4A90E2);
+    if (label.contains('완료')) color = AppColors.primary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
     );
   }
 }

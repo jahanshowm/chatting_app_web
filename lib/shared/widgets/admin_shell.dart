@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:randomchat_admin/core/navigation/admin_menu.dart';
+import 'package:randomchat_admin/core/navigation/admin_shell_path_provider.dart';
 import 'package:randomchat_admin/core/providers/auth_provider.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 
-class AdminShell extends StatelessWidget {
-  const AdminShell({super.key, required this.title, required this.child});
+class AdminShell extends ConsumerWidget {
+  const AdminShell({super.key, required this.child});
 
-  final String title;
   final Widget child;
 
   static const sidebarWidth = 305.0;
 
   @override
-  Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final path = ref.watch(adminShellPathProvider);
+    final breadcrumb = adminBreadcrumbForPath(path);
 
     return Scaffold(
       body: Row(
         children: [
-          _Sidebar(currentPath: location),
+          _Sidebar(currentPath: path),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -27,13 +29,33 @@ class AdminShell extends StatelessWidget {
                 Container(
                   height: 72,
                   padding: const EdgeInsets.symmetric(horizontal: 32),
-                  alignment: Alignment.centerLeft,
                   decoration: const BoxDecoration(
                     border: Border(bottom: BorderSide(color: AppColors.border)),
                   ),
-                  child: Text(
-                    title,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          breadcrumb.text,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      OutlinedButton(
+                        onPressed: () async {
+                          await ref.read(authProvider.notifier).logout();
+                          if (context.mounted) {
+                            ref.read(adminShellPathProvider.notifier).resetTo('/dashboard');
+                            context.go('/login');
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: const BorderSide(color: AppColors.border),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        ),
+                        child: const Text('로그아웃'),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(child: child),
@@ -53,6 +75,78 @@ class _Sidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return _SidebarBody(
+      currentPath: currentPath,
+      onNavigate: (path) => adminNavigate(ref, path),
+    );
+  }
+}
+
+class _SidebarBody extends StatefulWidget {
+  const _SidebarBody({
+    required this.currentPath,
+    required this.onNavigate,
+  });
+
+  final String currentPath;
+  final ValueChanged<String> onNavigate;
+
+  @override
+  State<_SidebarBody> createState() => _SidebarBodyState();
+}
+
+class _SidebarBodyState extends State<_SidebarBody> {
+  final Set<String> _expanded = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _syncExpanded(widget.currentPath);
+  }
+
+  @override
+  void didUpdateWidget(_SidebarBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentPath != widget.currentPath) {
+      _syncExpanded(widget.currentPath);
+    }
+  }
+
+  void _syncExpanded(String path) {
+    for (final section in adminMenuSections) {
+      if (section.items.length > 1 && section.matchesPath(path)) {
+        _expanded.add(section.label);
+      }
+    }
+  }
+
+  bool _isSelected(AdminMenuItem item) {
+    final path = widget.currentPath;
+    if (item.path == path) return true;
+    if (item.path == '/members/report-block') {
+      return path.startsWith('/members/report-block') ||
+          path.startsWith('/members/reports') ||
+          path.startsWith('/members/blocks');
+    }
+    if (item.path == '/members/new') {
+      final parts = path.split('/');
+      if (parts.length == 3 && parts[1] == 'members' && parts[2].length > 12) {
+        return true;
+      }
+    }
+    if (item.path == '/inquiries/active' &&
+        path.startsWith('/inquiries/') &&
+        path != '/inquiries/withdrawn' &&
+        path != '/inquiries/active') {
+      return true;
+    }
+    return path.startsWith('${item.path}/');
+  }
+
+  bool _sectionActive(AdminMenuSection section) => section.matchesPath(widget.currentPath);
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: AdminShell.sidebarWidth,
       color: AppColors.sidebar,
@@ -62,55 +156,70 @@ class _Sidebar extends ConsumerWidget {
           const SizedBox(height: 40),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              '랜덤채팅\n관리자',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                height: 1.2,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '랜덤채팅',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '중년의 품격',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 48),
-          _MenuItem(
-            label: '대시보드',
-            path: '/dashboard',
-            selected: currentPath.startsWith('/dashboard'),
-          ),
-          _MenuItem(
-            label: '회원관리',
-            path: '/members',
-            selected: currentPath.startsWith('/members'),
-          ),
-          _MenuItem(
-            label: '결제내역',
-            path: '/payments',
-            selected: currentPath.startsWith('/payments'),
-          ),
-          _MenuItem(
-            label: '문의내역',
-            path: '/inquiries',
-            selected: currentPath.startsWith('/inquiries'),
-          ),
-          _MenuItem(
-            label: '운영관리',
-            path: '/operations/popups',
-            selected: currentPath.startsWith('/operations'),
-          ),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: OutlinedButton(
-              onPressed: () async {
-                await ref.read(authProvider.notifier).logout();
-                if (context.mounted) context.go('/login');
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white70,
-                side: const BorderSide(color: Colors.white24),
-              ),
-              child: const Text('로그아웃'),
+          const SizedBox(height: 32),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                for (final section in adminMenuSections) ...[
+                  if (section.items.length == 1)
+                    _SidebarMainItem(
+                      label: section.label,
+                      selected: _sectionActive(section),
+                      onTap: () => widget.onNavigate(section.items.first.path),
+                    )
+                  else ...[
+                    _SidebarSectionHeader(
+                      label: section.label,
+                      expanded: _expanded.contains(section.label) || _sectionActive(section),
+                      active: _sectionActive(section),
+                      onTap: () {
+                        setState(() {
+                          if (_expanded.contains(section.label)) {
+                            _expanded.remove(section.label);
+                          } else {
+                            _expanded.add(section.label);
+                          }
+                        });
+                        if (!_sectionActive(section)) {
+                          widget.onNavigate(section.items.first.path);
+                        }
+                      },
+                    ),
+                    if (_expanded.contains(section.label) || _sectionActive(section))
+                      for (final item in section.items)
+                        _SidebarSubItem(
+                          label: item.label,
+                          selected: _isSelected(item),
+                          onTap: () => widget.onNavigate(item.path),
+                        ),
+                  ],
+                ],
+              ],
             ),
           ),
         ],
@@ -119,19 +228,23 @@ class _Sidebar extends ConsumerWidget {
   }
 }
 
-class _MenuItem extends StatelessWidget {
-  const _MenuItem({required this.label, required this.path, required this.selected});
+class _SidebarMainItem extends StatelessWidget {
+  const _SidebarMainItem({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
-  final String path;
   final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: selected ? AppColors.sidebarActive : Colors.transparent,
       child: InkWell(
-        onTap: () => context.go(path),
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
           child: Text(
@@ -140,6 +253,85 @@ class _MenuItem extends StatelessWidget {
               color: Colors.white,
               fontSize: 18,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarSectionHeader extends StatelessWidget {
+  const _SidebarSectionHeader({
+    required this.label,
+    required this.expanded,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool expanded;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: active && !expanded ? AppColors.sidebarActive.withValues(alpha: 0.6) : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(32, 16, 24, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(
+                expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                color: Colors.white70,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarSubItem extends StatelessWidget {
+  const _SidebarSubItem({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.sidebarActive : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(48, 12, 32, 12),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : Colors.white70,
+              fontSize: 15,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
             ),
           ),
         ),

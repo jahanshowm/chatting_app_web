@@ -81,10 +81,11 @@ class AdminApi {
     required String userId,
     required String tab,
     int page = 1,
+    int limit = 5,
   }) {
     return _client.getData(
       '/admin/members/$userId/activities',
-      queryParameters: {'tab': tab, 'page': page},
+      queryParameters: {'tab': tab, 'page': page, 'limit': limit},
       fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),
     );
   }
@@ -95,6 +96,7 @@ class AdminApi {
     String? keyword,
     String? startDate,
     String? endDate,
+    String? period,
   }) {
     return _client.getData(
       '/admin/payments',
@@ -104,6 +106,7 @@ class AdminApi {
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
         if (startDate != null) 'start_date': startDate,
         if (endDate != null) 'end_date': endDate,
+        if (period != null) 'period': period,
       },
       fromJson: PaymentListResult.fromJson,
     );
@@ -114,6 +117,7 @@ class AdminApi {
     String? keyword,
     bool withdrawn = false,
     List<String>? statuses,
+    String? userId,
   }) {
     return _client.getData(
       '/admin/inquiries',
@@ -121,6 +125,7 @@ class AdminApi {
         'page': page,
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
         'withdrawn': withdrawn,
+        if (userId != null && userId.isNotEmpty) 'user_id': userId,
         if (statuses != null) 'statuses': statuses,
       },
       fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),
@@ -130,20 +135,36 @@ class AdminApi {
   Future<InquiryThread> inquiryMessages(String id) =>
       _client.getData('/admin/inquiries/$id/messages', fromJson: InquiryThread.fromJson);
 
-  Future<Map<String, dynamic>> sendInquiryMessage(String id, String content) =>
-      _client.postData('/admin/inquiries/$id/messages', data: {'content': content});
+  Future<Map<String, dynamic>> sendInquiryMessage(
+    String id, {
+    String? content,
+    String? imagePath,
+    List<int>? imageBytes,
+    String? imageName,
+  }) async {
+    if (imageBytes != null && imageName != null) {
+      final form = FormData.fromMap({
+        if (content != null && content.isNotEmpty) 'content': content,
+        'image': MultipartFile.fromBytes(imageBytes, filename: imageName),
+      });
+      return _client.postFormData('/admin/inquiries/$id/messages', formData: form);
+    }
+    return _client.postData('/admin/inquiries/$id/messages', data: {'content': content ?? ''});
+  }
 
   Future<Map<String, dynamic>> updateInquiryStatus(String id, String status) =>
       _client.patchData('/admin/inquiries/$id/status', data: {'status': status});
 
   Future<PaginatedResult<Map<String, dynamic>>> notices({
     int page = 1,
+    String? filter,
     String? keyword,
   }) {
     return _client.getData(
       '/admin/notices',
       queryParameters: {
         'page': page,
+        if (filter != null && filter != 'all') 'filter': filter,
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
       },
       fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),
@@ -161,6 +182,8 @@ class AdminApi {
 
   Future<void> deleteNotices(List<String> ids) =>
       _client.deleteData('/admin/notices', data: {'ids': ids});
+
+  Future<Map<String, dynamic>> popupDetail(String id) => _client.getData('/admin/popups/$id');
 
   Future<List<Map<String, dynamic>>> popups() =>
       _client.getListData('/admin/popups', fromJson: (j) => j);
@@ -181,6 +204,7 @@ class AdminApi {
     int page = 1,
     String? startDate,
     String? endDate,
+    String? keyword,
   }) {
     return _client.getData(
       '/admin/fcm',
@@ -188,6 +212,7 @@ class AdminApi {
         'page': page,
         if (startDate != null) 'start_date': startDate,
         if (endDate != null) 'end_date': endDate,
+        if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
       },
       fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),
     );
