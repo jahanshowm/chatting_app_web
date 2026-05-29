@@ -20,29 +20,43 @@ class MemberInfoHeader extends StatelessWidget {
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Wrap(
-              spacing: 24,
-              runSpacing: 12,
+          if (photos.isNotEmpty) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                _InfoTile(label: '이름', value: '${data['name'] ?? '-'}'),
-                _InfoTile(label: '닉네임', value: '${data['nickname'] ?? '-'}'),
-                _InfoTile(label: '생년월일', value: '${data['birth_date'] ?? '-'}'),
-                _InfoTile(label: '휴대폰번호', value: '${data['phone_number'] ?? '-'}'),
-                _InfoTile(label: '거주지역', value: '${data['region'] ?? '-'}'),
-                _InfoTile(label: '성별', value: '${data['gender'] ?? '-'}'),
-                _InfoTile(label: '가입일', value: '${data['joined_at'] ?? '-'}'),
-                _InfoTile(label: '신고수', value: '${data['report_count'] ?? 0}'),
-                _InfoTile(label: '차단수', value: '${data['block_count'] ?? 0}'),
+                for (final url in photos.take(4))
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(url, width: 72, height: 72, fit: BoxFit.cover),
+                  ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(height: 16),
+          ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 24,
+                  runSpacing: 12,
+                  children: [
+                    _InfoTile(label: '이름', value: '${data['name'] ?? '-'}'),
+                    _InfoTile(label: '닉네임', value: '${data['nickname'] ?? '-'}'),
+                    _InfoTile(label: '생년월일', value: '${data['birth_date'] ?? '-'}'),
+                    _InfoTile(label: '휴대폰번호', value: '${data['phone_number'] ?? '-'}'),
+                    _InfoTile(label: '거주지역', value: '${data['region'] ?? '-'}'),
+                    _InfoTile(label: '성별', value: '${data['gender'] ?? '-'}'),
+                    _InfoTile(label: '가입일', value: '${data['joined_at'] ?? '-'}'),
+                    _InfoTile(label: '신고수', value: '${data['report_count'] ?? 0}'),
+                    _InfoTile(label: '차단수', value: '${data['block_count'] ?? 0}'),
+                  ],
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
@@ -54,20 +68,6 @@ class MemberInfoHeader extends StatelessWidget {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
               ),
-              if (photos.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final url in photos.take(4))
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(url, width: 72, height: 72, fit: BoxFit.cover),
-                      ),
-                  ],
-                ),
-              ],
             ],
           ),
         ],

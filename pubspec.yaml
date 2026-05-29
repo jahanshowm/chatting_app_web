@@ -24,6 +24,7 @@ dependencies:
   data_table_2: ^2.6.0
   flutter_quill: ^11.4.1
   vsc_quill_delta_to_html: ^1.0.5
+  flutter_svg: ^2.0.17
 
 dev_dependencies:
   flutter_test:
@@ -34,3 +35,4 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/logos/

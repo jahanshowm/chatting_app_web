@@ -271,7 +271,6 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loadingData) return const Center(child: CircularProgressIndicator());
-    final fmt = DateFormat('yyyy.MM.dd');
     final isEdit = widget.popupId != null;
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -295,7 +294,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
                     lastDate: DateTime(2100),
                   );
                   if (d != null) setState(() => _start = d);
-                }, child: Text('시작 ${fmt.format(_start)}')),
+                }, child: Text('시작 ${DateRangeBar.formatDisplay(_start)}')),
                 const SizedBox(width: 12),
                 OutlinedButton(onPressed: () async {
                   final d = await showDatePicker(
@@ -305,7 +304,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
                     lastDate: DateTime(2100),
                   );
                   if (d != null) setState(() => _end = d);
-                }, child: Text('종료 ${fmt.format(_end)}')),
+                }, child: Text('종료 ${DateRangeBar.formatDisplay(_end)}')),
               ],
             ),
             const SizedBox(height: 12),
@@ -1193,8 +1192,6 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
   final _title = TextEditingController();
   late final QuillController _quill = QuillController.basic();
   String? _initialHtml;
-  bool _published = true;
-  bool _pinned = false;
   bool _loading = false;
   bool _loadingData = false;
 
@@ -1210,8 +1207,6 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       final data = await ref.read(adminApiProvider).noticeDetail(widget.noticeId!);
       _title.text = '${data['title']}';
       _initialHtml = '${data['content']}';
-      _published = data['is_published'] == true;
-      _pinned = data['is_pinned'] == true;
       if (mounted) setState(() => _loadingData = false);
     } catch (e) {
       if (mounted) setState(() => _loadingData = false);
@@ -1254,8 +1249,8 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       final body = {
         'title': _title.text.trim(),
         'content': NoticeRichEditor.documentToHtml(_quill),
-        'is_published': _published,
-        'is_pinned': _pinned,
+        'is_published': true,
+        'is_pinned': false,
       };
       if (widget.noticeId == null) {
         await ref.read(adminApiProvider).createNotice(body);
@@ -1292,16 +1287,6 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
               controller: _quill,
               initialHtml: _initialHtml,
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Checkbox(value: _published, onChanged: (v) => setState(() => _published = v ?? true)),
-              const Text('게시'),
-              const SizedBox(width: 24),
-              Checkbox(value: _pinned, onChanged: (v) => setState(() => _pinned = v ?? false)),
-              const Text('상단 고정'),
-            ],
           ),
           const SizedBox(height: 12),
           Row(

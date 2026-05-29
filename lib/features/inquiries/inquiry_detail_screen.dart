@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:randomchat_admin/core/providers/auth_provider.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
@@ -128,6 +129,57 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
     );
   }
 
+  Widget _adminAvatar() {
+    final admin = ref.watch(authProvider).admin;
+    final display = (admin?.name?.trim().isNotEmpty == true)
+        ? admin!.name!.trim()
+        : (admin?.username ?? '관리');
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: AppColors.primary,
+      child: Text(
+        display.characters.first,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _messageBubble({
+    required bool isAdmin,
+    required String? content,
+    required String? imageUrl,
+  }) {
+    return Column(
+      crossAxisAlignment: isAdmin ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (content != null && content.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isAdmin ? AppColors.primary : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              content,
+              style: TextStyle(color: isAdmin ? Colors.white : AppColors.text),
+            ),
+          ),
+        if (imageUrl != null && imageUrl.isNotEmpty) ...[
+          if (content != null && content.isNotEmpty) const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(imageUrl, width: 200, fit: BoxFit.cover),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -175,54 +227,64 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
                   final memberName = '${_thread!.member['name'] ?? '?'}';
                   final imageUrl = msg['image_url'] as String?;
                   final content = msg['content'] as String?;
+                  final timeLabel = _formatTime(msg['created_at']);
+
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment:
+                          isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
                       children: [
-                        if (!isAdmin)
+                        if (!isAdmin) ...[
                           _memberAvatar(memberName),
-                        if (!isAdmin) const SizedBox(width: 8),
+                          const SizedBox(width: 8),
+                        ],
                         Flexible(
-                          child: Column(
-                            crossAxisAlignment:
-                                isAdmin ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          child: Row(
+                            mainAxisAlignment:
+                                isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              if (content != null && content.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: isAdmin ? AppColors.primary : Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                              if (isAdmin && timeLabel.isNotEmpty) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8, bottom: 4),
                                   child: Text(
-                                    content,
-                                    style: TextStyle(color: isAdmin ? Colors.white : AppColors.text),
+                                    timeLabel,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
-                                ),
-                              if (imageUrl != null && imageUrl.isNotEmpty) ...[
-                                if (content != null && content.isNotEmpty) const SizedBox(height: 8),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(imageUrl, width: 200, fit: BoxFit.cover),
                                 ),
                               ],
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatTime(msg['created_at']),
-                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              Flexible(
+                                child: _messageBubble(
+                                  isAdmin: isAdmin,
+                                  content: content,
+                                  imageUrl: imageUrl,
+                                ),
                               ),
+                              if (!isAdmin && timeLabel.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Text(
+                                    timeLabel,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
-                        if (isAdmin) const SizedBox(width: 8),
-                        if (isAdmin)
-                          const CircleAvatar(
-                            radius: 18,
-                            backgroundColor: AppColors.primary,
-                            child: Icon(Icons.support_agent, color: Colors.white, size: 18),
-                          ),
+                        if (isAdmin) ...[
+                          const SizedBox(width: 8),
+                          _adminAvatar(),
+                        ],
                       ],
                     ),
                   );

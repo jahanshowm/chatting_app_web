@@ -110,7 +110,6 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     if (_tab == 'withdrawn') {
       return const [
         ('gender', '성별'),
-        ('name', '이름'),
         ('payment_summary', '결제내역'),
         ('inquiry_summary', '문의내역'),
         ('joined_at', '가입일'),
