@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:randomchat_admin/core/navigation/admin_shell_path_provider.dart';
+import 'package:randomchat_admin/core/network/api_client.dart';
 import 'package:randomchat_admin/core/providers/auth_provider.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/shared/widgets/admin_dialog.dart';
@@ -18,7 +19,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _username = TextEditingController();
   final _password = TextEditingController();
   bool _remember = false;
+  bool _saveId = false;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedUsername();
+  }
+
+  Future<void> _loadSavedUsername() async {
+    final storage = ref.read(tokenStorageProvider);
+    final enabled = await storage.getSaveUsernameEnabled();
+    final saved = await storage.getSavedUsername();
+    if (!mounted) return;
+    setState(() {
+      _saveId = enabled;
+      if (enabled && saved != null && saved.isNotEmpty) {
+        _username.text = saved;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -42,6 +63,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     setState(() => _submitting = true);
     try {
+      final storage = ref.read(tokenStorageProvider);
+      await storage.setSaveUsernameEnabled(_saveId);
+      if (_saveId) {
+        await storage.saveUsername(username);
+      } else {
+        await storage.clearSavedUsername();
+      }
+
       final ok = await ref.read(authProvider.notifier).login(
             username,
             password,
@@ -56,10 +85,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       final error = ref.read(authProvider).error ?? '로그인에 실패했습니다.';
-      await showAdminAlertDialog(
-        context,
-        title: '로그인 실패',
-        message: error,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), duration: const Duration(seconds: 3)),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -112,6 +139,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         : (v) => setState(() => _remember = v ?? false),
                   ),
                   const Text('로그인 상태 유지'),
+                  const SizedBox(width: 16),
+                  Checkbox(
+                    value: _saveId,
+                    onChanged: _submitting
+                        ? null
+                        : (v) => setState(() => _saveId = v ?? false),
+                  ),
+                  const Text('아이디 저장'),
                 ],
               ),
               const SizedBox(height: 24),

@@ -86,10 +86,20 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
     );
   }
 
+  void _resetSearch() {
+    setState(() {
+      _statusFilter = {'all'};
+      _page = 1;
+      _keyword.clear();
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final spec = _spec;
     final items = _data?.items ?? [];
+    final totalCount = _data?.total ?? items.length;
 
     return AdminContentArea(
       toolbar: Column(
@@ -116,6 +126,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
               setState(() => _page = 1);
               _load();
             },
+            onReset: _resetSearch,
           ),
         ],
       ),
@@ -152,9 +163,11 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
                         }).toList(),
                       ),
                     ),
-                    PaginationBar(
+                    ListPageFooter(
                       page: _page,
                       totalPages: _data?.totalPages ?? 1,
+                      totalCount: totalCount,
+                      unit: '건',
                       onPageChanged: (p) {
                         setState(() => _page = p);
                         _load();

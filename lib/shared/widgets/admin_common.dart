@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 
 class SearchFilterBar extends StatelessWidget {
@@ -9,6 +10,7 @@ class SearchFilterBar extends StatelessWidget {
     required this.keywordController,
     required this.onSearch,
     this.onFilterChanged,
+    this.onReset,
     this.hint = '검색어를 입력하세요',
     this.useSearchIcon = false,
   });
@@ -18,6 +20,7 @@ class SearchFilterBar extends StatelessWidget {
   final TextEditingController keywordController;
   final VoidCallback onSearch;
   final ValueChanged<String>? onFilterChanged;
+  final VoidCallback? onReset;
   final String hint;
   final bool useSearchIcon;
 
@@ -61,6 +64,10 @@ class SearchFilterBar extends StatelessWidget {
         if (!useSearchIcon) ...[
           const SizedBox(width: 12),
           ElevatedButton(onPressed: onSearch, child: const Text('검색')),
+        ],
+        if (onReset != null) ...[
+          const SizedBox(width: 8),
+          OutlinedButton(onPressed: onReset, child: const Text('초기화')),
         ],
       ],
     );
@@ -366,6 +373,14 @@ Widget sectionTitle(String text) => Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
     );
+
+/// API product_name에 금액이 포함된 경우 중복 포맷 방지
+String formatProductWithAmount(String? productName, dynamic amount, NumberFormat fmt) {
+  final product = productName ?? '-';
+  if (product.contains('(') && product.contains('원)')) return product;
+  if (amount != null) return '$product (${fmt.format(amount)}원)';
+  return product;
+}
 
 /// 엑셀: 선택 0개일 때도 버튼 노출, 비활성화
 class DeleteActionButton extends StatelessWidget {

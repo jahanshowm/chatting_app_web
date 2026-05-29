@@ -105,6 +105,7 @@ const noticeSpec = AdminScreenSpec(
     ('title', '제목'),
     ('view_count', '조회수'),
     ('date', '일자'),
+    ('manage', '관리'),
   ],
   searchHint: '검색어를 입력하세요',
 );

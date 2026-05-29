@@ -62,10 +62,26 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
     }
   }
 
+  void _resetSearch() {
+    final today = DateTime.now();
+    final d = DateTime(today.year, today.month, today.day);
+    setState(() {
+      _period = 'daily';
+      _start = d;
+      _end = d;
+      _filter = 'all';
+      _page = 1;
+      _keyword.clear();
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat('#,###');
     final items = _data?.page.items ?? [];
+    final totalCount = _data?.page.total ?? items.length;
+    final totalPages = _data?.page.totalPages ?? 1;
 
     return AdminContentArea(
       toolbar: Column(
@@ -114,6 +130,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
               setState(() => _page = 1);
               _load();
             },
+            onReset: _resetSearch,
           ),
         ],
       ),
@@ -140,22 +157,26 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                           DataColumn2(label: Text('결제일')),
                         ],
                         rows: items.map((row) {
-                          final product = row['product_name'] ?? '-';
-                          final amount = row['amount'];
-                          final productLabel = amount != null ? '$product (${fmt.format(amount)}원)' : product;
+                          final productLabel = formatProductWithAmount(
+                            row['product_name']?.toString(),
+                            row['amount'],
+                            fmt,
+                          );
                           return DataRow(cells: [
                             DataCell(Text('${row['gender'] ?? '-'}')),
                             DataCell(Text('${row['name'] ?? '-'}')),
                             DataCell(Text('${row['phone_number'] ?? '-'}')),
-                            DataCell(Text('$productLabel')),
+                            DataCell(Text(productLabel)),
                             DataCell(Text('${row['paid_at'] ?? '-'}')),
                           ]);
                         }).toList(),
                       ),
                     ),
-                    PaginationBar(
+                    ListPageFooter(
                       page: _page,
-                      totalPages: _data?.page.totalPages ?? 1,
+                      totalPages: totalPages,
+                      totalCount: totalCount,
+                      unit: '건',
                       onPageChanged: (p) {
                         setState(() => _page = p);
                         _load();

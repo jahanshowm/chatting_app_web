@@ -127,8 +127,17 @@ AdminBreadcrumb adminBreadcrumbForPath(String path) {
   if (path.contains('/operations/popups/') && path.contains('/edit')) {
     return const AdminBreadcrumb(section: '운영관리', item: '팝업 수정');
   }
+  if (path.contains('/operations/fcm/new/all')) {
+    return const AdminBreadcrumb(section: '운영관리', item: 'FCM 전체발송');
+  }
+  if (path.contains('/operations/fcm/new/target')) {
+    return const AdminBreadcrumb(section: '운영관리', item: 'FCM 타겟발송');
+  }
   if (path.contains('/operations/fcm/new')) {
-    return const AdminBreadcrumb(section: '운영관리', item: 'FCM 발송');
+    return const AdminBreadcrumb(section: '운영관리', item: 'FCM 발송 설정');
+  }
+  if (path.contains('/operations/fcm/') && !path.endsWith('/fcm')) {
+    return const AdminBreadcrumb(section: '운영관리', item: 'FCM 상세');
   }
   if (path.contains('/operations/notices/new')) {
     return const AdminBreadcrumb(section: '운영관리', item: '공지 등록');

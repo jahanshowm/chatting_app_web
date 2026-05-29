@@ -22,6 +22,26 @@ class DateRangeBar extends StatelessWidget {
 
   static String formatApi(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
+  /// 리스트 일자와 동일한 yy.mm.dd 표기
+  static String formatDisplay(DateTime d) {
+    final y = (d.year % 100).toString().padLeft(2, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '$y.$m.$day';
+  }
+
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  static bool isValidRange(DateTime start, DateTime end) {
+    return !_dateOnly(start).isAfter(_dateOnly(end));
+  }
+
+  static void showInvalidRangeMessage(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('시작일은 종료일보다 미래일 수 없습니다.')),
+    );
+  }
+
   Future<void> _pick(BuildContext context, bool isStart) async {
     final initial = isStart ? start : end;
     final picked = await showDatePicker(
@@ -31,55 +51,73 @@ class DateRangeBar extends StatelessWidget {
       lastDate: DateTime(2100),
     );
     if (picked == null) return;
-    if (isStart) {
-      onChanged(picked, end.isBefore(picked) ? picked : end);
-    } else {
-      onChanged(start.isAfter(picked) ? picked : start, picked);
+
+    final nextStart = isStart ? picked : start;
+    final nextEnd = isStart ? end : picked;
+    if (!isValidRange(nextStart, nextEnd)) {
+      if (context.mounted) showInvalidRangeMessage(context);
+      return;
     }
+    onChanged(nextStart, nextEnd);
   }
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('yyyy.MM.dd');
-    return Wrap(
-      spacing: 12,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    final rangeInvalid = !isValidRange(start, end);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (period != null && onPeriodChanged != null) ...[
-          _PeriodChip(
-            label: '일간',
-            selected: period == 'daily',
-            onTap: () => onPeriodChanged!('daily'),
-          ),
-          _PeriodChip(
-            label: '주간',
-            selected: period == 'weekly',
-            onTap: () => onPeriodChanged!('weekly'),
-          ),
-          _PeriodChip(
-            label: '월간',
-            selected: period == 'monthly',
-            onTap: () => onPeriodChanged!('monthly'),
-          ),
-          const SizedBox(width: 8),
-        ],
-        OutlinedButton(
-          onPressed: () => _pick(context, true),
-          child: Text(fmt.format(start)),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (period != null && onPeriodChanged != null) ...[
+              _PeriodChip(
+                label: '일간',
+                selected: period == 'daily',
+                onTap: () => onPeriodChanged!('daily'),
+              ),
+              _PeriodChip(
+                label: '주간',
+                selected: period == 'weekly',
+                onTap: () => onPeriodChanged!('weekly'),
+              ),
+              _PeriodChip(
+                label: '월간',
+                selected: period == 'monthly',
+                onTap: () => onPeriodChanged!('monthly'),
+              ),
+              const SizedBox(width: 8),
+            ],
+            OutlinedButton(
+              onPressed: () => _pick(context, true),
+              child: Text(formatDisplay(start)),
+            ),
+            const Text('~'),
+            OutlinedButton(
+              onPressed: () => _pick(context, false),
+              child: Text(formatDisplay(end)),
+            ),
+            TextButton(
+              onPressed: () {
+                final today = DateTime.now();
+                final d = DateTime(today.year, today.month, today.day);
+                onChanged(d, d);
+              },
+              child: const Text('오늘'),
+            ),
+          ],
         ),
-        const Text('~'),
-        OutlinedButton(
-          onPressed: () => _pick(context, false),
-          child: Text(fmt.format(end)),
-        ),
-        TextButton(
-          onPressed: () {
-            final today = DateTime.now();
-            onChanged(DateTime(today.year, today.month, today.day), today);
-          },
-          child: const Text('오늘'),
-        ),
+        if (rangeInvalid)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text(
+              '시작일은 종료일보다 미래일 수 없습니다.',
+              style: TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
       ],
     );
   }

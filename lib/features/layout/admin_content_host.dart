@@ -65,7 +65,24 @@ class AdminContentHost extends StatelessWidget {
         return const PopupListScreen();
       }
       if (segments.length >= 2 && segments[1] == 'fcm') {
-        if (segments.length >= 3 && segments[2] == 'new') return const FcmFormScreen();
+        if (segments.length >= 3 && segments[2] == 'new') {
+          final sendMethod = uri.queryParameters['send_method'] ?? 'immediate';
+          final scheduledRaw = uri.queryParameters['scheduled_at'];
+          DateTime? scheduledAt;
+          if (scheduledRaw != null && scheduledRaw.isNotEmpty) {
+            scheduledAt = DateTime.tryParse(scheduledRaw);
+          }
+          if (segments.length >= 4 && segments[3] == 'all') {
+            return FcmAllSendFormScreen(sendMethod: sendMethod, scheduledAt: scheduledAt);
+          }
+          if (segments.length >= 4 && segments[3] == 'target') {
+            return FcmTargetSendFormScreen(sendMethod: sendMethod, scheduledAt: scheduledAt);
+          }
+          return const FcmSendTypeScreen();
+        }
+        if (segments.length >= 3) {
+          return FcmDetailScreen(campaignId: segments[2]);
+        }
         return const FcmListScreen();
       }
       if (segments.length >= 2 && segments[1] == 'notices') {

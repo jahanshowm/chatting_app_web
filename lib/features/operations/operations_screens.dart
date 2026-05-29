@@ -13,6 +13,7 @@ import 'package:randomchat_admin/shared/widgets/admin_detail_back_bar.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 import 'package:randomchat_admin/shared/widgets/notice_rich_editor.dart';
+import 'package:randomchat_admin/shared/widgets/region_multi_select_field.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
 class PopupListScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,7 @@ class PopupListScreen extends ConsumerStatefulWidget {
 
 class _PopupListScreenState extends ConsumerState<PopupListScreen> {
   List<Map<String, dynamic>> _items = [];
+  final Set<String> _selected = {};
   bool _loading = true;
 
   @override
@@ -39,6 +41,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
       if (!mounted) return;
       setState(() {
         _items = items;
+        _selected.clear();
         _loading = false;
       });
     } catch (e) {
@@ -46,6 +49,18 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_selected.isEmpty) return;
+    final ok = await showConfirmDialog(
+      context,
+      title: '삭제 확인',
+      message: '선택한 ${_selected.length}개의 항목을 삭제하시겠습니까?',
+    );
+    if (ok != true) return;
+    await ref.read(adminApiProvider).deletePopups(_selected.toList());
+    _load();
   }
 
   @override
@@ -58,6 +73,12 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
           child: const Text('팝업 등록'),
         ),
       ),
+      summary: Row(
+        children: [
+          const Spacer(),
+          DeleteActionButton(selectedCount: _selected.length, onDelete: _deleteSelected),
+        ],
+      ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
@@ -66,47 +87,77 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                   columnSpacing: 12,
                   minWidth: 1100,
                   headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
-                  columns: const [
-                    DataColumn2(label: Text('NO')),
-                    DataColumn2(label: Text('이미지')),
-                    DataColumn2(label: Text('제목')),
-                    DataColumn2(label: Text('조회수')),
-                    DataColumn2(label: Text('등록일')),
-                    DataColumn2(label: Text('사용여부')),
-                    DataColumn2(label: Text('관리')),
+                  columns: [
+                    DataColumn2(
+                      label: Checkbox(
+                        value: _selected.length == _items.length && _items.isNotEmpty,
+                        onChanged: (v) {
+                          setState(() {
+                            if (v == true) {
+                              _selected.addAll(_items.map((e) => e['id'] as String));
+                            } else {
+                              _selected.clear();
+                            }
+                          });
+                        },
+                      ),
+                      size: ColumnSize.S,
+                    ),
+                    const DataColumn2(label: Text('NO')),
+                    const DataColumn2(label: Text('이미지')),
+                    const DataColumn2(label: Text('제목')),
+                    const DataColumn2(label: Text('조회수')),
+                    const DataColumn2(label: Text('등록일')),
+                    const DataColumn2(label: Text('사용여부')),
+                    const DataColumn2(label: Text('관리')),
                   ],
                   rows: _items.map((row) {
                     final id = row['id'] as String;
                     final imageUrl = row['image_url'] as String?;
-                    return DataRow(cells: [
-                      DataCell(Text('${row['no'] ?? '-'}')),
-                      DataCell(
-                        imageUrl != null && imageUrl.isNotEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: Image.network(imageUrl, width: 48, height: 48, fit: BoxFit.cover),
-                              )
-                            : const Text('-'),
-                      ),
-                      DataCell(Text('${row['title'] ?? '-'}')),
-                      DataCell(Text('${row['view_count'] ?? 0}')),
-                      DataCell(Text('${row['registered_at'] ?? '-'}')),
-                      DataCell(
-                        Switch(
-                          value: row['is_active'] == true,
-                          onChanged: (v) async {
-                            await ref.read(adminApiProvider).togglePopup(id, v);
-                            _load();
+                    return DataRow(
+                      selected: _selected.contains(id),
+                      cells: [
+                        DataCell(Checkbox(
+                          value: _selected.contains(id),
+                          onChanged: (v) {
+                            setState(() {
+                              if (v == true) {
+                                _selected.add(id);
+                              } else {
+                                _selected.remove(id);
+                              }
+                            });
                           },
+                        )),
+                        DataCell(Text('${row['no'] ?? '-'}')),
+                        DataCell(
+                          imageUrl != null && imageUrl.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Image.network(imageUrl, width: 48, height: 48, fit: BoxFit.cover),
+                                )
+                              : const Text('-'),
                         ),
-                      ),
-                      DataCell(
-                        TextButton(
-                          onPressed: () => adminNavigateReplace(ref, '/operations/popups/$id/edit'),
-                          child: const Text('수정'),
+                        DataCell(Text('${row['title'] ?? '-'}')),
+                        DataCell(Text('${row['view_count'] ?? 0}')),
+                        DataCell(Text('${row['registered_at'] ?? '-'}')),
+                        DataCell(
+                          Switch(
+                            value: row['is_active'] == true,
+                            onChanged: (v) async {
+                              await ref.read(adminApiProvider).togglePopup(id, v);
+                              _load();
+                            },
+                          ),
                         ),
-                      ),
-                    ]);
+                        DataCell(
+                          TextButton(
+                            onPressed: () => adminNavigateReplace(ref, '/operations/popups/$id/edit'),
+                            child: const Text('수정'),
+                          ),
+                        ),
+                      ],
+                    );
                   }).toList(),
                 ),
     );
@@ -201,10 +252,27 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
     }
   }
 
+  Future<void> _cancel() async {
+    final hasContent = _title.text.trim().isNotEmpty ||
+        _link.text.trim().isNotEmpty ||
+        _image != null;
+    if (hasContent) {
+      final ok = await showConfirmDialog(
+        context,
+        title: '나가기',
+        message: '작성 중인 내용이 저장되지 않습니다. 나가시겠습니까?',
+      );
+      if (ok != true) return;
+    }
+    if (!mounted) return;
+    adminNavigateReplace(ref, '/operations/popups');
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadingData) return const Center(child: CircularProgressIndicator());
     final fmt = DateFormat('yyyy.MM.dd');
+    final isEdit = widget.popupId != null;
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -268,13 +336,13 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
             Row(
               children: [
                 OutlinedButton(
-                  onPressed: _loading ? null : () => adminNavigateReplace(ref, '/operations/popups'),
+                  onPressed: _loading ? null : _cancel,
                   child: const Text('취소'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: _loading ? null : _submit,
-                  child: Text(_loading ? '저장 중...' : '등록'),
+                  child: Text(_loading ? '저장 중...' : (isEdit ? '수정' : '등록')),
                 ),
               ],
             ),
@@ -331,10 +399,24 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
     }
   }
 
+  void _resetSearch() {
+    final today = DateTime.now();
+    final d = DateTime(today.year, today.month, today.day);
+    setState(() {
+      _start = d;
+      _end = d;
+      _page = 1;
+      _keyword.clear();
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final sentFmt = DateFormat('yyyy.MM.dd HH:mm');
     final items = (_data?.items as List<Map<String, dynamic>>?) ?? [];
+    final totalCount = _data?.total as int? ?? items.length;
+    final totalPages = _data?.totalPages as int? ?? 1;
 
     return AdminContentArea(
       toolbar: Column(
@@ -373,6 +455,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                 },
                 icon: const Icon(Icons.search),
               ),
+              OutlinedButton(onPressed: _resetSearch, child: const Text('초기화')),
               const SizedBox(width: 12),
               ElevatedButton(
                 onPressed: () => adminNavigateReplace(ref, '/operations/fcm/new'),
@@ -401,6 +484,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                           DataColumn2(label: Text('발송일')),
                         ],
                         rows: items.map((row) {
+                          final id = row['id'] as String;
                           final sentAt = row['sent_at'];
                           String sentLabel = '-';
                           if (sentAt != null) {
@@ -410,19 +494,24 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                               sentLabel = '$sentAt';
                             }
                           }
-                          return DataRow(cells: [
-                            DataCell(Text('${row['send_method'] ?? '-'}')),
-                            DataCell(Text('${row['target_type'] ?? '-'}')),
-                            DataCell(Text('${row['title'] ?? '-'}')),
-                            DataCell(Text('${row['status'] ?? '-'}')),
-                            DataCell(Text(sentLabel)),
-                          ]);
+                          return DataRow2(
+                            onTap: () => adminNavigateReplace(ref, '/operations/fcm/$id'),
+                            cells: [
+                              DataCell(Text('${row['send_method'] ?? '-'}')),
+                              DataCell(Text('${row['target_type'] ?? '-'}')),
+                              DataCell(Text('${row['title'] ?? '-'}')),
+                              DataCell(Text('${row['status'] ?? '-'}')),
+                              DataCell(Text(sentLabel)),
+                            ],
+                          );
                         }).toList(),
                       ),
                     ),
-                    PaginationBar(
+                    ListPageFooter(
                       page: _page,
-                      totalPages: _data?.totalPages ?? 1,
+                      totalPages: totalPages,
+                      totalCount: totalCount,
+                      unit: '건',
                       onPageChanged: (p) {
                         setState(() => _page = p);
                         _load();
@@ -434,25 +523,250 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
   }
 }
 
-class FcmFormScreen extends ConsumerStatefulWidget {
-  const FcmFormScreen({super.key});
+class FcmDetailScreen extends ConsumerStatefulWidget {
+  const FcmDetailScreen({super.key, required this.campaignId});
+
+  final String campaignId;
 
   @override
-  ConsumerState<FcmFormScreen> createState() => _FcmFormScreenState();
+  ConsumerState<FcmDetailScreen> createState() => _FcmDetailScreenState();
 }
 
-class _FcmFormScreenState extends ConsumerState<FcmFormScreen> {
+class _FcmDetailScreenState extends ConsumerState<FcmDetailScreen> {
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final data = await ref.read(adminApiProvider).fcmDetail(widget.campaignId);
+      if (!mounted) return;
+      setState(() {
+        _data = data;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  String _formatDt(dynamic raw) {
+    if (raw == null) return '-';
+    try {
+      return DateFormat('yyyy.MM.dd HH:mm').format(DateTime.parse('$raw').toLocal());
+    } catch (_) {
+      return '$raw';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    final d = _data ?? {};
+
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AdminDetailBackBar(backPath: '/operations/fcm'),
+          sectionTitle('FCM 발송 상세'),
+          Wrap(
+            spacing: 24,
+            runSpacing: 12,
+            children: [
+              _DetailTile('발송방법', d['send_method']),
+              _DetailTile('발송대상', d['target_type']),
+              _DetailTile('발송상태', d['status']),
+              _DetailTile('발송일', _formatDt(d['sent_at'])),
+              _DetailTile('예약일', _formatDt(d['scheduled_at'])),
+              _DetailTile('발송수', d['sent_count']),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text('제목', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text('${d['title'] ?? '-'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 16),
+          Text('내용', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text('${d['body'] ?? '-'}'),
+          if (d['link_url'] != null) ...[
+            const SizedBox(height: 16),
+            Text('링크', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text('${d['link_url']}'),
+          ],
+          if (d['target_type'] == '타겟발송') ...[
+            const SizedBox(height: 16),
+            Text('타겟 조건', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(
+              '성별: ${d['target_genders'] ?? '-'} / '
+              '연령: ${d['target_age_min'] ?? '-'}~${d['target_age_max'] ?? '-'} / '
+              '지역: ${d['target_provinces'] ?? '-'}',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailTile extends StatelessWidget {
+  const _DetailTile(this.label, this.value);
+
+  final String label;
+  final dynamic value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 160,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text('${value ?? '-'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+class FcmSendTypeScreen extends ConsumerStatefulWidget {
+  const FcmSendTypeScreen({super.key});
+
+  @override
+  ConsumerState<FcmSendTypeScreen> createState() => _FcmSendTypeScreenState();
+}
+
+class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
+  String _sendMethod = 'immediate';
+  DateTime? _scheduledAt;
+
+  Future<void> _pickSchedule() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _scheduledAt ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_scheduledAt ?? DateTime.now()),
+    );
+    if (time == null) return;
+    setState(() {
+      _scheduledAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
+  void _go(String targetPath) {
+    final params = <String, String>{
+      'send_method': _sendMethod,
+      if (_sendMethod == 'scheduled' && _scheduledAt != null)
+        'scheduled_at': _scheduledAt!.toIso8601String(),
+    };
+    final query = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+    adminNavigateReplace(ref, '$targetPath?$query');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = DateFormat('yyyy.MM.dd HH:mm');
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AdminDetailBackBar(backPath: '/operations/fcm'),
+          const Text('발송 타겟 및 방식 설정', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+          const SizedBox(height: 24),
+          DropdownButtonFormField<String>(
+            initialValue: _sendMethod,
+            decoration: const InputDecoration(labelText: '발송 방식'),
+            items: const [
+              DropdownMenuItem(value: 'immediate', child: Text('즉시발송')),
+              DropdownMenuItem(value: 'scheduled', child: Text('예약발송')),
+            ],
+            onChanged: (v) => setState(() => _sendMethod = v ?? 'immediate'),
+          ),
+          if (_sendMethod == 'scheduled') ...[
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _pickSchedule,
+              child: Text(_scheduledAt == null ? '예약 일시 선택' : '예약: ${fmt.format(_scheduledAt!)}'),
+            ),
+          ],
+          const SizedBox(height: 32),
+          const Text('발송 대상', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    if (_sendMethod == 'scheduled' && _scheduledAt == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('예약 일시를 선택해주세요.')),
+                      );
+                      return;
+                    }
+                    _go('/operations/fcm/new/all');
+                  },
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 24)),
+                  child: const Text('전체발송'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_sendMethod == 'scheduled' && _scheduledAt == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('예약 일시를 선택해주세요.')),
+                      );
+                      return;
+                    }
+                    _go('/operations/fcm/new/target');
+                  },
+                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 24)),
+                  child: const Text('타겟발송'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class FcmAllSendFormScreen extends ConsumerStatefulWidget {
+  const FcmAllSendFormScreen({super.key, required this.sendMethod, this.scheduledAt});
+
+  final String sendMethod;
+  final DateTime? scheduledAt;
+
+  @override
+  ConsumerState<FcmAllSendFormScreen> createState() => _FcmAllSendFormScreenState();
+}
+
+class _FcmAllSendFormScreenState extends ConsumerState<FcmAllSendFormScreen> {
   final _title = TextEditingController();
   final _body = TextEditingController();
   final _link = TextEditingController();
-  final _province = TextEditingController();
-  String _sendMethod = 'immediate';
-  String _targetType = 'all';
-  bool _targetMale = true;
-  bool _targetFemale = true;
-  int _ageMin = 20;
-  int _ageMax = 70;
-  DateTime? _scheduledAt;
   bool _loading = false;
 
   @override
@@ -460,33 +774,19 @@ class _FcmFormScreenState extends ConsumerState<FcmFormScreen> {
     _title.dispose();
     _body.dispose();
     _link.dispose();
-    _province.dispose();
     super.dispose();
   }
 
   Map<String, dynamic> _buildBody() {
-    final body = <String, dynamic>{
+    return {
       'title': _title.text.trim(),
       'body': _body.text.trim(),
       'link_url': _link.text.trim().isEmpty ? null : _link.text.trim(),
-      'send_method': _sendMethod,
-      'target_type': _targetType,
+      'send_method': widget.sendMethod,
+      'target_type': 'all',
+      if (widget.sendMethod == 'scheduled' && widget.scheduledAt != null)
+        'scheduled_at': widget.scheduledAt!.toIso8601String(),
     };
-    if (_sendMethod == 'scheduled' && _scheduledAt != null) {
-      body['scheduled_at'] = _scheduledAt!.toIso8601String();
-    }
-    if (_targetType == 'target') {
-      final genders = <String>[];
-      if (_targetMale) genders.add('male');
-      if (_targetFemale) genders.add('female');
-      body['target_genders'] = genders;
-      body['target_age_min'] = _ageMin;
-      body['target_age_max'] = _ageMax;
-      if (_province.text.trim().isNotEmpty) {
-        body['target_provinces'] = [_province.text.trim()];
-      }
-    }
-    return body;
   }
 
   Future<void> _submit({bool test = false}) async {
@@ -504,7 +804,9 @@ class _FcmFormScreenState extends ConsumerState<FcmFormScreen> {
         adminNavigateReplace(ref, '/operations/fcm');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -512,108 +814,19 @@ class _FcmFormScreenState extends ConsumerState<FcmFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('yyyy.MM.dd HH:mm');
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminDetailBackBar(backPath: '/operations/fcm'),
+          const AdminDetailBackBar(backPath: '/operations/fcm/new'),
+          const Text('전체발송', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+          const SizedBox(height: 16),
           TextField(controller: _title, decoration: const InputDecoration(labelText: '알림 제목')),
           const SizedBox(height: 12),
           TextField(controller: _body, decoration: const InputDecoration(labelText: '알림 내용'), maxLines: 4),
           const SizedBox(height: 12),
           TextField(controller: _link, decoration: const InputDecoration(labelText: '링크(URL)')),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _sendMethod,
-            decoration: const InputDecoration(labelText: '발송 방식'),
-            items: const [
-              DropdownMenuItem(value: 'immediate', child: Text('즉시발송')),
-              DropdownMenuItem(value: 'scheduled', child: Text('예약발송')),
-            ],
-            onChanged: (v) => setState(() => _sendMethod = v ?? 'immediate'),
-          ),
-          if (_sendMethod == 'scheduled') ...[
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _scheduledAt ?? DateTime.now(),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime(2100),
-                );
-                if (date == null || !mounted) return;
-                final time = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.fromDateTime(_scheduledAt ?? DateTime.now()),
-                );
-                if (time == null) return;
-                setState(() {
-                  _scheduledAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-                });
-              },
-              child: Text(_scheduledAt == null ? '예약 일시 선택' : '예약: ${fmt.format(_scheduledAt!)}'),
-            ),
-          ],
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _targetType,
-            decoration: const InputDecoration(labelText: '발송 대상'),
-            items: const [
-              DropdownMenuItem(value: 'all', child: Text('전체발송')),
-              DropdownMenuItem(value: 'target', child: Text('타겟발송')),
-            ],
-            onChanged: (v) => setState(() => _targetType = v ?? 'all'),
-          ),
-          if (_targetType == 'target') ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const Text('성별', style: TextStyle(fontWeight: FontWeight.w600)),
-                FilterChip(
-                  label: const Text('남성'),
-                  selected: _targetMale,
-                  onSelected: (v) => setState(() => _targetMale = v),
-                ),
-                FilterChip(
-                  label: const Text('여성'),
-                  selected: _targetFemale,
-                  onSelected: (v) => setState(() => _targetFemale = v),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    initialValue: _ageMin,
-                    decoration: const InputDecoration(labelText: '연령대(최소)'),
-                    items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
-                    onChanged: (v) => setState(() => _ageMin = v ?? 20),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    initialValue: _ageMax,
-                    decoration: const InputDecoration(labelText: '연령대(최대)'),
-                    items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
-                    onChanged: (v) => setState(() => _ageMax = v ?? 70),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _province,
-              decoration: const InputDecoration(labelText: '지역(시/군/구)'),
-            ),
-          ],
           const Spacer(),
           Row(
             children: [
@@ -628,6 +841,158 @@ class _FcmFormScreenState extends ConsumerState<FcmFormScreen> {
   }
 }
 
+class FcmTargetSendFormScreen extends ConsumerStatefulWidget {
+  const FcmTargetSendFormScreen({super.key, required this.sendMethod, this.scheduledAt});
+
+  final String sendMethod;
+  final DateTime? scheduledAt;
+
+  @override
+  ConsumerState<FcmTargetSendFormScreen> createState() => _FcmTargetSendFormScreenState();
+}
+
+class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScreen> {
+  final _title = TextEditingController();
+  final _body = TextEditingController();
+  final _link = TextEditingController();
+  bool _targetMale = true;
+  bool _targetFemale = true;
+  int _ageMin = 20;
+  int _ageMax = 70;
+  Set<String> _selectedRegions = {};
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _body.dispose();
+    _link.dispose();
+    super.dispose();
+  }
+
+  Map<String, dynamic> _buildBody() {
+    final body = <String, dynamic>{
+      'title': _title.text.trim(),
+      'body': _body.text.trim(),
+      'link_url': _link.text.trim().isEmpty ? null : _link.text.trim(),
+      'send_method': widget.sendMethod,
+      'target_type': 'target',
+    };
+    if (widget.sendMethod == 'scheduled' && widget.scheduledAt != null) {
+      body['scheduled_at'] = widget.scheduledAt!.toIso8601String();
+    }
+    final genders = <String>[];
+    if (_targetMale) genders.add('male');
+    if (_targetFemale) genders.add('female');
+    body['target_genders'] = genders;
+    body['target_age_min'] = _ageMin;
+    body['target_age_max'] = _ageMax;
+    if (_selectedRegions.isNotEmpty) {
+      body['target_provinces'] = _selectedRegions.toList();
+    }
+    return body;
+  }
+
+  Future<void> _submit({bool test = false}) async {
+    if (!_targetMale && !_targetFemale) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('성별을 1개 이상 선택해주세요.')));
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final body = _buildBody();
+      if (test) {
+        await ref.read(adminApiProvider).testFcm(body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('테스트 발송 완료')));
+        }
+      } else {
+        await ref.read(adminApiProvider).createFcm(body);
+        if (!mounted) return;
+        adminNavigateReplace(ref, '/operations/fcm');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AdminDetailBackBar(backPath: '/operations/fcm/new'),
+          const Text('타겟발송', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 16,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text('성별', style: TextStyle(fontWeight: FontWeight.w600)),
+              FilterChip(
+                label: const Text('남성'),
+                selected: _targetMale,
+                onSelected: (v) => setState(() => _targetMale = v),
+              ),
+              FilterChip(
+                label: const Text('여성'),
+                selected: _targetFemale,
+                onSelected: (v) => setState(() => _targetFemale = v),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  initialValue: _ageMin,
+                  decoration: const InputDecoration(labelText: '연령대(최소)'),
+                  items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
+                  onChanged: (v) => setState(() => _ageMin = v ?? 20),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  initialValue: _ageMax,
+                  decoration: const InputDecoration(labelText: '연령대(최대)'),
+                  items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
+                  onChanged: (v) => setState(() => _ageMax = v ?? 70),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          RegionMultiSelectField(
+            selected: _selectedRegions,
+            onChanged: (v) => setState(() => _selectedRegions = v),
+          ),
+          const SizedBox(height: 16),
+          TextField(controller: _title, decoration: const InputDecoration(labelText: '알림 제목')),
+          const SizedBox(height: 12),
+          TextField(controller: _body, decoration: const InputDecoration(labelText: '알림 내용'), maxLines: 4),
+          const SizedBox(height: 12),
+          TextField(controller: _link, decoration: const InputDecoration(labelText: '링크(URL)')),
+          const Spacer(),
+          Row(
+            children: [
+              OutlinedButton(onPressed: _loading ? null : () => _submit(test: true), child: const Text('테스트 발송')),
+              const SizedBox(width: 12),
+              ElevatedButton(onPressed: _loading ? null : () => _submit(), child: const Text('발송하기')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 class NoticeListScreen extends ConsumerStatefulWidget {
   const NoticeListScreen({super.key});
 
@@ -641,6 +1006,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
   bool _loading = true;
   String _filter = 'all';
   final _keyword = TextEditingController();
+  final Set<String> _selected = {};
 
   @override
   void initState() {
@@ -665,6 +1031,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
       if (!mounted) return;
       setState(() {
         _data = data;
+        _selected.clear();
         _loading = false;
       });
     } catch (e) {
@@ -673,9 +1040,32 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
     }
   }
 
+  Future<void> _deleteSelected() async {
+    if (_selected.isEmpty) return;
+    final ok = await showConfirmDialog(
+      context,
+      title: '삭제 확인',
+      message: '선택한 ${_selected.length}개의 항목을 삭제하시겠습니까?',
+    );
+    if (ok != true) return;
+    await ref.read(adminApiProvider).deleteNotices(_selected.toList());
+    _load();
+  }
+
+  void _resetSearch() {
+    setState(() {
+      _filter = 'all';
+      _page = 1;
+      _keyword.clear();
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = (_data?.items as List<Map<String, dynamic>>?) ?? [];
+    final totalCount = _data?.total as int? ?? items.length;
+    final totalPages = _data?.totalPages as int? ?? 1;
 
     return AdminContentArea(
       toolbar: Column(
@@ -694,14 +1084,21 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
             filter: _filter,
             filters: noticeSpec.filters,
             keywordController: _keyword,
-            hint: noticeSpec.searchHint,
+            hint: _filter == 'manage' ? '수정할 공지 제목 검색' : noticeSpec.searchHint,
             useSearchIcon: true,
             onFilterChanged: (v) => setState(() => _filter = v),
             onSearch: () {
               setState(() => _page = 1);
               _load();
             },
+            onReset: _resetSearch,
           ),
+        ],
+      ),
+      summary: Row(
+        children: [
+          const Spacer(),
+          DeleteActionButton(selectedCount: _selected.length, onDelete: _deleteSelected),
         ],
       ),
       child: _loading
@@ -715,31 +1112,63 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                         columnSpacing: 12,
                         minWidth: 800,
                         headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
-                        columns: const [
-                          DataColumn2(label: Text('제목')),
-                          DataColumn2(label: Text('조회수')),
-                          DataColumn2(label: Text('일자')),
-                          DataColumn2(label: Text('관리')),
+                        columns: [
+                          DataColumn2(
+                            label: Checkbox(
+                              value: _selected.length == items.length && items.isNotEmpty,
+                              onChanged: (v) {
+                                setState(() {
+                                  if (v == true) {
+                                    _selected.addAll(items.map((e) => e['id'] as String));
+                                  } else {
+                                    _selected.clear();
+                                  }
+                                });
+                              },
+                            ),
+                            size: ColumnSize.S,
+                          ),
+                          const DataColumn2(label: Text('제목')),
+                          const DataColumn2(label: Text('조회수')),
+                          const DataColumn2(label: Text('일자')),
+                          const DataColumn2(label: Text('관리')),
                         ],
                         rows: items.map((row) {
                           final id = row['id'] as String;
-                          return DataRow(cells: [
-                            DataCell(Text('${row['title'] ?? '-'}')),
-                            DataCell(Text('${row['view_count'] ?? 0}')),
-                            DataCell(Text('${row['date'] ?? '-'}')),
-                            DataCell(
-                              TextButton(
-                                onPressed: () => adminNavigateReplace(ref, '/operations/notices/$id/edit'),
-                                child: const Text('수정'),
+                          return DataRow(
+                            selected: _selected.contains(id),
+                            cells: [
+                              DataCell(Checkbox(
+                                value: _selected.contains(id),
+                                onChanged: (v) {
+                                  setState(() {
+                                    if (v == true) {
+                                      _selected.add(id);
+                                    } else {
+                                      _selected.remove(id);
+                                    }
+                                  });
+                                },
+                              )),
+                              DataCell(Text('${row['title'] ?? '-'}')),
+                              DataCell(Text('${row['view_count'] ?? 0}')),
+                              DataCell(Text('${row['date'] ?? '-'}')),
+                              DataCell(
+                                TextButton(
+                                  onPressed: () => adminNavigateReplace(ref, '/operations/notices/$id/edit'),
+                                  child: const Text('수정'),
+                                ),
                               ),
-                            ),
-                          ]);
+                            ],
+                          );
                         }).toList(),
                       ),
                     ),
-                    PaginationBar(
+                    ListPageFooter(
                       page: _page,
-                      totalPages: _data?.totalPages ?? 1,
+                      totalPages: totalPages,
+                      totalCount: totalCount,
+                      unit: '건',
                       onPageChanged: (p) {
                         setState(() => _page = p);
                         _load();
@@ -881,7 +1310,7 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
               const SizedBox(width: 12),
               ElevatedButton(
                 onPressed: _loading ? null : _submit,
-                child: Text(_loading ? '저장 중...' : '등록'),
+                child: Text(_loading ? '저장 중...' : (widget.noticeId == null ? '등록' : '수정')),
               ),
             ],
           ),

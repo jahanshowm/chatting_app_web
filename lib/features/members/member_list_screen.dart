@@ -93,10 +93,24 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     _load();
   }
 
+  void _resetSearch() {
+    final today = DateTime.now();
+    final d = DateTime(today.year, today.month, today.day);
+    setState(() {
+      _start = d;
+      _end = d;
+      _filter = 'all';
+      _page = 1;
+      _keyword.clear();
+    });
+    _load();
+  }
+
   List<(String, String)> get _columns {
     if (_tab == 'withdrawn') {
       return const [
         ('gender', '성별'),
+        ('name', '이름'),
         ('payment_summary', '결제내역'),
         ('inquiry_summary', '문의내역'),
         ('joined_at', '가입일'),
@@ -155,6 +169,7 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
               setState(() => _page = 1);
               _load();
             },
+            onReset: _resetSearch,
           ),
         ],
       ),
@@ -214,13 +229,14 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                               )),
                               ..._columns.map((c) {
                                 if (_tab == 'withdrawn' && c.$1 == 'inquiry_summary') {
+                                  final count = row[c.$1];
                                   return DataCell(
                                     TextButton(
                                       onPressed: () => adminNavigateReplace(
                                         ref,
                                         '/inquiries/withdrawn?user_id=${Uri.encodeComponent(id)}',
                                       ),
-                                      child: Text('${row[c.$1] ?? '내역보기'}'),
+                                      child: Text(count == '-' ? '내역보기' : '내역보기 ($count)'),
                                     ),
                                   );
                                 }

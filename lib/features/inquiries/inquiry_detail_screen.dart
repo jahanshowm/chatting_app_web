@@ -53,6 +53,13 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
     }
   }
 
+  String _statusDisplay(Map<String, dynamic> inquiry) {
+    final raw = inquiry['status']?.toString();
+    final label = inquiry['status_label']?.toString() ?? '-';
+    if (raw == 'closed' || label == '완료') return '답변완료';
+    return label;
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
@@ -105,6 +112,22 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
     return [];
   }
 
+  Widget _memberAvatar(String memberName) {
+    final photos = _photos;
+    if (photos.isNotEmpty) {
+      return CircleAvatar(
+        radius: 18,
+        backgroundColor: AppColors.border,
+        backgroundImage: NetworkImage(photos.first),
+      );
+    }
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: AppColors.border,
+      child: Text(memberName.characters.first),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -131,7 +154,7 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const Spacer(),
-                Text('${inquiry['status_label'] ?? '-'}'),
+                Text(_statusDisplay(inquiry)),
               ],
             ),
           ),
@@ -159,11 +182,7 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
                       mainAxisAlignment: isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
                       children: [
                         if (!isAdmin)
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: AppColors.border,
-                            child: Text(memberName.characters.first),
-                          ),
+                          _memberAvatar(memberName),
                         if (!isAdmin) const SizedBox(width: 8),
                         Flexible(
                           child: Column(

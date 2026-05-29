@@ -6,6 +6,7 @@ import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
+import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 
@@ -58,24 +59,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  void _resetSearch() {
+    final today = DateTime.now();
+    final d = DateTime(today.year, today.month, today.day);
+    setState(() {
+      _period = 'daily';
+      _start = d;
+      _end = d;
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdminContentArea(
-      toolbar: DateRangeBar(
-        start: _start,
-        end: _end,
-        period: _period,
-        onPeriodChanged: (p) {
-          setState(() => _period = p);
-          _load();
-        },
-        onChanged: (s, e) {
-          setState(() {
-            _start = s;
-            _end = e;
-          });
-          _load();
-        },
+      toolbar: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DateRangeBar(
+            start: _start,
+            end: _end,
+            period: _period,
+            onPeriodChanged: (p) {
+              final today = DateTime.now();
+              setState(() {
+                _period = p;
+                if (p == 'weekly') {
+                  _start = DateTime(today.year, today.month, today.day)
+                      .subtract(const Duration(days: 6));
+                  _end = today;
+                } else if (p == 'monthly') {
+                  _start = DateTime(today.year, today.month, 1);
+                  _end = today;
+                } else {
+                  _start = DateTime(today.year, today.month, today.day);
+                  _end = today;
+                }
+              });
+              _load();
+            },
+            onChanged: (s, e) {
+              setState(() {
+                _start = s;
+                _end = e;
+              });
+              _load();
+            },
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: _resetSearch, child: const Text('초기화')),
+          ),
+        ],
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -114,14 +149,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       enabled: true,
                                       touchTooltipData: BarTouchTooltipData(
                                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                          if (rodIndex != 0) return null;
                                           if (groupIndex < 0 || groupIndex >= _visitors.length) {
                                             return null;
                                           }
                                           final point = _visitors[groupIndex];
-                                          final gender = rodIndex == 0 ? '남성' : '여성';
-                                          final count = rodIndex == 0 ? point.male : point.female;
                                           return BarTooltipItem(
-                                            '${point.label}\n$gender : ${count}명',
+                                            '${point.label}\n남성 : ${point.male}명\n여성 : ${point.female}명',
                                             const TextStyle(color: Colors.white, fontSize: 12),
                                           );
                                         },
@@ -184,7 +218,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     children: [
                       Expanded(
                         child: _TopTable(
-                          title: '신규가입 TOP5',
+                          title: '신규가입 현황',
                           screenLink: '/members/new',
                           rows: _signups,
                           columns: const [
@@ -199,7 +233,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       const SizedBox(width: 24),
                       Expanded(
                         child: _TopTable(
-                          title: '결제 TOP5',
+                          title: '결제 현황',
                           screenLink: '/payments',
                           rows: _payments,
                           columns: const [
@@ -211,9 +245,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ],
                           formatCell: (key, row, fmt) {
                             if (key == 'product_name') {
-                              final product = row['product_name'] ?? '-';
-                              final amount = row['amount'];
-                              if (amount != null) return '$product (${fmt.format(amount)}원)';
+                              return formatProductWithAmount(
+                                row['product_name']?.toString(),
+                                row['amount'],
+                                fmt,
+                              );
                             }
                             return '${row[key] ?? '-'}';
                           },

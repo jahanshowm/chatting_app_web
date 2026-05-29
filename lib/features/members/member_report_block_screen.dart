@@ -1,6 +1,7 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
@@ -107,6 +108,27 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
     ];
   }
 
+  void _openMemberDetail(Map<String, dynamic> row) {
+    final userId = (_tab == 'block'
+            ? row['blocker_user_id']
+            : row['reporter_user_id'])
+        ?.toString();
+    if (userId == null || userId.isEmpty) return;
+    adminNavigateReplace(
+      ref,
+      '/members/$userId?from=${Uri.encodeComponent('/members/report-block')}',
+    );
+  }
+
+  void _resetSearch() {
+    setState(() {
+      _filter = 'all';
+      _page = 1;
+      _keyword.clear();
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final spec = _spec;
@@ -145,12 +167,13 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
             filters: spec.filters,
             keywordController: _keyword,
             hint: spec.searchHint,
-            useSearchIcon: _tab == 'block',
+            useSearchIcon: false,
             onFilterChanged: (v) => setState(() => _filter = v),
             onSearch: () {
               setState(() => _page = 1);
               _load();
             },
+            onReset: _resetSearch,
           ),
         ],
       ),
@@ -192,7 +215,8 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
                         ],
                         rows: items.map((row) {
                           final id = row['id'] as String;
-                          return DataRow(
+                          return DataRow2(
+                            onTap: () => _openMemberDetail(row),
                             cells: [
                               DataCell(Checkbox(
                                 value: _selected.contains(id),

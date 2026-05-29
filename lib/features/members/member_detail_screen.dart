@@ -1,6 +1,7 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
@@ -147,7 +148,14 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
               headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
               columns: _activityColumns.map((c) => DataColumn2(label: Text(c.$2))).toList(),
               rows: (_activities?.items ?? []).map((row) {
-                return DataRow(
+                final inquiryId = row['id']?.toString();
+                return DataRow2(
+                  onTap: _activityTab == 'inquiry' && inquiryId != null
+                      ? () => adminNavigateReplace(
+                            ref,
+                            '/inquiries/$inquiryId?from=${Uri.encodeComponent(widget.listPath)}',
+                          )
+                      : null,
                   cells: _activityColumns
                       .map((c) => DataCell(Text('${row[c.$1] ?? '-'}')))
                       .toList(),
