@@ -43,7 +43,9 @@ class AdminContentHost extends StatelessWidget {
       return MemberListScreen(tab: apiTab);
     }
 
-    if (path == '/payments') return const PaymentListScreen();
+    if (segments.first == 'payments') {
+      return PaymentListScreen(userId: uri.queryParameters['user_id']);
+    }
 
     if (segments.first == 'inquiries') {
       if (segments.length >= 2 && segments[1] != 'active' && segments[1] != 'withdrawn') {

@@ -102,9 +102,22 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
     final totalCount = _data?.total ?? items.length;
 
     return AdminContentArea(
+      screenId: spec.id,
+      subtitle: spec.subtitle,
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.userId != null) ...[
+            UserFilterBanner(
+              userId: widget.userId!,
+              label: widget.withdrawn ? '탈퇴 회원 문의내역' : '회원 문의내역',
+              onClear: () => adminNavigateReplace(
+                ref,
+                widget.withdrawn ? '/inquiries/withdrawn' : '/inquiries/active',
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           InquiryStatusFilterBar(
             selected: _statusFilter,
             onChanged: (next) {

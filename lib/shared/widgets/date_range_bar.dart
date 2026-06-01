@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:randomchat_admin/shared/utils/admin_date_format.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 
 class DateRangeBar extends StatelessWidget {
@@ -20,7 +20,7 @@ class DateRangeBar extends StatelessWidget {
   final ValueChanged<String>? onPeriodChanged;
   final List<String> periodOptions;
 
-  static String formatApi(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+  static String formatApi(DateTime d) => formatYmdApi(d);
 
   /// 리스트 일자와 동일한 yy.mm.dd 표기
   static String formatDisplay(DateTime d) {

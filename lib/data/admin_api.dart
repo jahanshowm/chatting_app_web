@@ -97,6 +97,7 @@ class AdminApi {
     String? startDate,
     String? endDate,
     String? period,
+    String? userId,
   }) {
     return _client.getData(
       '/admin/payments',
@@ -107,6 +108,7 @@ class AdminApi {
         if (startDate != null) 'start_date': startDate,
         if (endDate != null) 'end_date': endDate,
         if (period != null) 'period': period,
+        if (userId != null && userId.isNotEmpty) 'user_id': userId,
       },
       fromJson: PaymentListResult.fromJson,
     );

@@ -1,0 +1,27 @@
+/// [initializeDateFormatting] 없이 쓸 수 있는 날짜·시간 포맷 (LocaleDataException 방지)
+library;
+
+String formatYmdHmDots(DateTime dt) {
+  final local = dt.toLocal();
+  final m = local.month.toString().padLeft(2, '0');
+  final d = local.day.toString().padLeft(2, '0');
+  final h = local.hour.toString().padLeft(2, '0');
+  final min = local.minute.toString().padLeft(2, '0');
+  return '${local.year}.$m.$d $h:$min';
+}
+
+String formatYmdApi(DateTime dt) {
+  final local = dt.toLocal();
+  final m = local.month.toString().padLeft(2, '0');
+  final d = local.day.toString().padLeft(2, '0');
+  return '${local.year}-$m-$d';
+}
+
+/// hh:mma (en_US) 대체 — 예: 10:30AM
+String formatAmPmTime(DateTime dt) {
+  final local = dt.toLocal();
+  final hour12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final m = local.minute.toString().padLeft(2, '0');
+  final period = local.hour < 12 ? 'AM' : 'PM';
+  return '$hour12:$m$period';
+}

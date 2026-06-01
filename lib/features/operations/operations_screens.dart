@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:randomchat_admin/shared/utils/admin_date_format.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
@@ -395,6 +395,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -412,12 +413,13 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sentFmt = DateFormat('yyyy.MM.dd HH:mm');
     final items = (_data?.items as List<Map<String, dynamic>>?) ?? [];
     final totalCount = _data?.total as int? ?? items.length;
     final totalPages = _data?.totalPages as int? ?? 1;
 
     return AdminContentArea(
+      screenId: 'FCM-01',
+      subtitle: 'FCM 발송 캠페인 목록',
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -488,7 +490,9 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                           String sentLabel = '-';
                           if (sentAt != null) {
                             try {
-                              sentLabel = sentFmt.format(DateTime.parse('$sentAt').toLocal());
+                              sentLabel = formatYmdHmDots(
+                                DateTime.parse('$sentAt').toLocal(),
+                              );
                             } catch (_) {
                               sentLabel = '$sentAt';
                             }
@@ -560,7 +564,7 @@ class _FcmDetailScreenState extends ConsumerState<FcmDetailScreen> {
   String _formatDt(dynamic raw) {
     if (raw == null) return '-';
     try {
-      return DateFormat('yyyy.MM.dd HH:mm').format(DateTime.parse('$raw').toLocal());
+      return formatYmdHmDots(DateTime.parse('$raw').toLocal());
     } catch (_) {
       return '$raw';
     }
@@ -683,14 +687,16 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('yyyy.MM.dd HH:mm');
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const AdminDetailBackBar(backPath: '/operations/fcm'),
-          const Text('발송 타겟 및 방식 설정', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+          const Text(
+            '발송 타겟 및 방식 설정',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+          ),
           const SizedBox(height: 24),
           DropdownButtonFormField<String>(
             initialValue: _sendMethod,
@@ -705,7 +711,11 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
             const SizedBox(height: 12),
             OutlinedButton(
               onPressed: _pickSchedule,
-              child: Text(_scheduledAt == null ? '예약 일시 선택' : '예약: ${fmt.format(_scheduledAt!)}'),
+              child: Text(
+                _scheduledAt == null
+                    ? '예약 일시 선택'
+                    : '예약: ${formatYmdHmDots(_scheduledAt!)}',
+              ),
             ),
           ],
           const SizedBox(height: 32),
@@ -724,7 +734,9 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
                     }
                     _go('/operations/fcm/new/all');
                   },
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 24)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                  ),
                   child: const Text('전체발송'),
                 ),
               ),
@@ -740,7 +752,9 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
                     }
                     _go('/operations/fcm/new/target');
                   },
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 24)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                  ),
                   child: const Text('타겟발송'),
                 ),
               ),
@@ -1036,6 +1050,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -1067,6 +1082,8 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
     final totalPages = _data?.totalPages as int? ?? 1;
 
     return AdminContentArea(
+      screenId: noticeSpec.id,
+      subtitle: noticeSpec.subtitle,
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1128,6 +1145,8 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                             size: ColumnSize.S,
                           ),
                           const DataColumn2(label: Text('제목')),
+                          const DataColumn2(label: Text('게시')),
+                          const DataColumn2(label: Text('고정')),
                           const DataColumn2(label: Text('조회수')),
                           const DataColumn2(label: Text('일자')),
                           const DataColumn2(label: Text('관리')),
@@ -1150,6 +1169,8 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                                 },
                               )),
                               DataCell(Text('${row['title'] ?? '-'}')),
+                              DataCell(Text(row['is_published'] == true ? '게시' : '비게시')),
+                              DataCell(Text(row['is_pinned'] == true ? '고정' : '-')),
                               DataCell(Text('${row['view_count'] ?? 0}')),
                               DataCell(Text('${row['date'] ?? '-'}')),
                               DataCell(
@@ -1194,6 +1215,8 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
   String? _initialHtml;
   bool _loading = false;
   bool _loadingData = false;
+  bool _isPublished = true;
+  bool _isPinned = false;
 
   @override
   void initState() {
@@ -1207,9 +1230,14 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       final data = await ref.read(adminApiProvider).noticeDetail(widget.noticeId!);
       _title.text = '${data['title']}';
       _initialHtml = '${data['content']}';
+      _isPublished = data['is_published'] as bool? ?? true;
+      _isPinned = data['is_pinned'] as bool? ?? false;
       if (mounted) setState(() => _loadingData = false);
     } catch (e) {
-      if (mounted) setState(() => _loadingData = false);
+      if (mounted) {
+        setState(() => _loadingData = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
@@ -1249,8 +1277,8 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       final body = {
         'title': _title.text.trim(),
         'content': NoticeRichEditor.documentToHtml(_quill),
-        'is_published': true,
-        'is_pinned': false,
+        'is_published': _isPublished,
+        'is_pinned': _isPinned,
       };
       if (widget.noticeId == null) {
         await ref.read(adminApiProvider).createNotice(body);
@@ -1280,6 +1308,22 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
         children: [
           const AdminDetailBackBar(backPath: '/operations/notices'),
           TextField(controller: _title, decoration: const InputDecoration(labelText: '제목')),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              FilterChip(
+                label: const Text('게시'),
+                selected: _isPublished,
+                onSelected: _loading ? null : (v) => setState(() => _isPublished = v),
+              ),
+              const SizedBox(width: 8),
+              FilterChip(
+                label: const Text('상단 고정'),
+                selected: _isPinned,
+                onSelected: _loading ? null : (v) => setState(() => _isPinned = v),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Expanded(
             child: NoticeRichEditor(

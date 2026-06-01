@@ -1,7 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:randomchat_admin/shared/utils/admin_date_format.dart';
 import 'package:randomchat_admin/core/providers/auth_provider.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
@@ -31,8 +31,6 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
   bool _loading = true;
   bool _sending = false;
 
-  static final _timeFmt = DateFormat('hh:mma', 'en_US');
-
   @override
   void initState() {
     super.initState();
@@ -48,7 +46,7 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
   String _formatTime(dynamic raw) {
     if (raw == null || '$raw'.isEmpty) return '';
     try {
-      return _timeFmt.format(DateTime.parse('$raw').toLocal()).toUpperCase();
+      return formatAmPmTime(DateTime.parse('$raw').toLocal()).toUpperCase();
     } catch (_) {
       return '$raw';
     }

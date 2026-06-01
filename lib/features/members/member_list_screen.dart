@@ -142,6 +142,8 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     final totalCount = _data?.total ?? items.length;
 
     return AdminContentArea(
+      screenId: spec.id,
+      subtitle: spec.subtitle,
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -234,6 +236,18 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                                       onPressed: () => adminNavigateReplace(
                                         ref,
                                         '/inquiries/withdrawn?user_id=${Uri.encodeComponent(id)}',
+                                      ),
+                                      child: Text(count == '-' ? '내역보기' : '내역보기 ($count)'),
+                                    ),
+                                  );
+                                }
+                                if (_tab == 'withdrawn' && c.$1 == 'payment_summary') {
+                                  final count = row[c.$1];
+                                  return DataCell(
+                                    TextButton(
+                                      onPressed: () => adminNavigateReplace(
+                                        ref,
+                                        '/payments?user_id=${Uri.encodeComponent(id)}',
                                       ),
                                       child: Text(count == '-' ? '내역보기' : '내역보기 ($count)'),
                                     ),

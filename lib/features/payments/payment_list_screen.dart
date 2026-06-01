@@ -2,6 +2,7 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
@@ -11,7 +12,9 @@ import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 
 class PaymentListScreen extends ConsumerStatefulWidget {
-  const PaymentListScreen({super.key});
+  const PaymentListScreen({super.key, this.userId});
+
+  final String? userId;
 
   @override
   ConsumerState<PaymentListScreen> createState() => _PaymentListScreenState();
@@ -34,6 +37,15 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
   }
 
   @override
+  void didUpdateWidget(PaymentListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      _page = 1;
+      _load();
+    }
+  }
+
+  @override
   void dispose() {
     _keyword.dispose();
     super.dispose();
@@ -49,6 +61,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
             startDate: DateRangeBar.formatApi(_start),
             endDate: DateRangeBar.formatApi(_end),
             period: _period,
+            userId: widget.userId,
           );
       if (!mounted) return;
       setState(() {
@@ -76,6 +89,10 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
     _load();
   }
 
+  void _clearUserFilter() {
+    adminNavigateReplace(ref, '/payments');
+  }
+
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat('#,###');
@@ -84,9 +101,19 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
     final totalPages = _data?.page.totalPages ?? 1;
 
     return AdminContentArea(
+      screenId: paymentSpec.id,
+      subtitle: paymentSpec.subtitle,
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.userId != null) ...[
+            UserFilterBanner(
+              userId: widget.userId!,
+              label: '탈퇴 회원 결제내역',
+              onClear: _clearUserFilter,
+            ),
+            const SizedBox(height: 16),
+          ],
           DateRangeBar(
             start: _start,
             end: _end,
@@ -135,7 +162,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
         ],
       ),
       summary: Text(
-        '선택 합계 : ${fmt.format(_data?.selectedSum ?? 0)}원',
+        '조회 합계 : ${fmt.format(_data?.selectedSum ?? 0)}원',
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
       child: _loading
