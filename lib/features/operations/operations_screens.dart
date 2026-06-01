@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/shared/utils/admin_date_format.dart';
+import 'package:randomchat_admin/shared/utils/resolve_admin_media_url.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
@@ -15,6 +16,16 @@ import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 import 'package:randomchat_admin/shared/widgets/notice_rich_editor.dart';
 import 'package:randomchat_admin/shared/widgets/region_multi_select_field.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+
+Widget _opsSectionTitle(String title) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8, top: 8),
+    child: Text(
+      title,
+      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+    ),
+  );
+}
 
 class PopupListScreen extends ConsumerStatefulWidget {
   const PopupListScreen({super.key});
@@ -66,6 +77,8 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
   @override
   Widget build(BuildContext context) {
     return AdminContentArea(
+      screenId: popupListSpec.id,
+      subtitle: popupListSpec.subtitle,
       toolbar: Align(
         alignment: Alignment.centerLeft,
         child: ElevatedButton(
@@ -113,7 +126,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                   ],
                   rows: _items.map((row) {
                     final id = row['id'] as String;
-                    final imageUrl = row['image_url'] as String?;
+                    final imageUrl = resolveAdminMediaUrl(row['image_url'] as String?);
                     return DataRow(
                       selected: _selected.contains(id),
                       cells: [
@@ -131,7 +144,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                         )),
                         DataCell(Text('${row['no'] ?? '-'}')),
                         DataCell(
-                          imageUrl != null && imageUrl.isNotEmpty
+                          imageUrl.isNotEmpty
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(4),
                                   child: Image.network(imageUrl, width: 48, height: 48, fit: BoxFit.cover),
@@ -244,6 +257,13 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
         await ref.read(adminApiProvider).updatePopup(widget.popupId!, form);
       }
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.popupId == null ? '정상적으로 등록되었습니다.' : '정상적으로 수정되었습니다.',
+          ),
+        ),
+      );
       adminNavigateReplace(ref, '/operations/popups');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -272,18 +292,15 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
   Widget build(BuildContext context) {
     if (_loadingData) return const Center(child: CircularProgressIndicator());
     final isEdit = widget.popupId != null;
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AdminDetailBackBar(
-            backPath: widget.popupId == null ? '/operations/popups' : '/operations/popups',
-          ),
-            TextField(controller: _title, decoration: const InputDecoration(hintText: '팝업 제목')),
-            const SizedBox(height: 12),
-            TextField(controller: _link, decoration: const InputDecoration(hintText: '링크 URL (선택)')),
-            const SizedBox(height: 12),
+    return AdminContentArea(
+      screenId: popupFormSpec.id,
+      subtitle: isEdit ? '팝업 수정' : '팝업 등록',
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AdminDetailBackBar(backPath: '/operations/popups'),
+            _opsSectionTitle('노출기간'),
             Row(
               children: [
                 OutlinedButton(onPressed: () async {
@@ -307,14 +324,12 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
                 }, child: Text('종료 ${DateRangeBar.formatDisplay(_end)}')),
               ],
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Text('활성'),
-                Switch(value: _active, onChanged: (v) => setState(() => _active = v)),
-              ],
+            _opsSectionTitle('제목'),
+            TextField(
+              controller: _title,
+              decoration: const InputDecoration(hintText: '관리용 팝업 제목 (필수)'),
             ),
-            const SizedBox(height: 12),
+            _opsSectionTitle('이미지'),
             OutlinedButton(
               onPressed: () async {
                 final result = await FilePicker.platform.pickFiles(withData: true, type: FileType.image);
@@ -322,16 +337,26 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
                   setState(() => _image = result.files.first);
                 }
               },
-              child: Text(_image == null ? '이미지 선택' : _image!.name),
+              child: Text(_image == null ? '이미지 업로드' : _image!.name),
             ),
             if (_existingImageUrl != null && _image == null) ...[
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(_existingImageUrl!, height: 120, fit: BoxFit.cover),
+                child: Image.network(
+                  resolveAdminMediaUrl(_existingImageUrl),
+                  height: 120,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Text('이미지를 불러올 수 없습니다'),
+                ),
               ),
             ],
-            const Spacer(),
+            _opsSectionTitle('연결 URL'),
+            TextField(
+              controller: _link,
+              decoration: const InputDecoration(hintText: '팝업 클릭 시 이동할 페이지 주소'),
+            ),
+            const SizedBox(height: 32),
             Row(
               children: [
                 OutlinedButton(
@@ -347,6 +372,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
             ),
           ],
         ),
+      ),
     );
   }
 }
@@ -362,7 +388,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
   int _page = 1;
   dynamic _data;
   bool _loading = true;
-  late DateTime _start = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+  late DateTime _start = DateTime.now().subtract(const Duration(days: 30));
   late DateTime _end = DateTime.now();
   final _keyword = TextEditingController();
 
@@ -401,10 +427,9 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
 
   void _resetSearch() {
     final today = DateTime.now();
-    final d = DateTime(today.year, today.month, today.day);
     setState(() {
-      _start = d;
-      _end = d;
+      _start = today.subtract(const Duration(days: 30));
+      _end = today;
       _page = 1;
       _keyword.clear();
     });
@@ -418,8 +443,8 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
     final totalPages = _data?.totalPages as int? ?? 1;
 
     return AdminContentArea(
-      screenId: 'FCM-01',
-      subtitle: 'FCM 발송 캠페인 목록',
+      screenId: fcmListSpec.id,
+      subtitle: fcmListSpec.subtitle,
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -469,7 +494,11 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : items.isEmpty
-              ? const AdminEmptyList()
+              ? AdminEmptyList(
+                  message: _keyword.text.trim().isNotEmpty
+                      ? '검색 결과가 없습니다.'
+                      : '발송 이력이 없습니다.',
+                )
               : Column(
                   children: [
                     Expanded(
@@ -575,50 +604,53 @@ class _FcmDetailScreenState extends ConsumerState<FcmDetailScreen> {
     if (_loading) return const Center(child: CircularProgressIndicator());
     final d = _data ?? {};
 
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AdminDetailBackBar(backPath: '/operations/fcm'),
-          sectionTitle('FCM 발송 상세'),
-          Wrap(
-            spacing: 24,
-            runSpacing: 12,
-            children: [
-              _DetailTile('발송방법', d['send_method']),
-              _DetailTile('발송대상', d['target_type']),
-              _DetailTile('발송상태', d['status']),
-              _DetailTile('발송일', _formatDt(d['sent_at'])),
-              _DetailTile('예약일', _formatDt(d['scheduled_at'])),
-              _DetailTile('발송수', d['sent_count']),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text('제목', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-          const SizedBox(height: 4),
-          Text('${d['title'] ?? '-'}', style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 16),
-          Text('내용', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-          const SizedBox(height: 4),
-          Text('${d['body'] ?? '-'}'),
-          if (d['link_url'] != null) ...[
-            const SizedBox(height: 16),
-            Text('링크', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text('${d['link_url']}'),
-          ],
-          if (d['target_type'] == '타겟발송') ...[
-            const SizedBox(height: 16),
-            Text('타겟 조건', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(
-              '성별: ${d['target_genders'] ?? '-'} / '
-              '연령: ${d['target_age_min'] ?? '-'}~${d['target_age_max'] ?? '-'} / '
-              '지역: ${d['target_provinces'] ?? '-'}',
+    return AdminContentArea(
+      screenId: fcmListSpec.id,
+      subtitle: 'FCM 발송 상세',
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AdminDetailBackBar(backPath: '/operations/fcm'),
+            sectionTitle('발송 상세정보'),
+            Wrap(
+              spacing: 24,
+              runSpacing: 12,
+              children: [
+                _DetailTile('발송방법', d['send_method']),
+                _DetailTile('발송대상', d['target_type']),
+                _DetailTile('발송상태', d['status']),
+                _DetailTile('발송일', _formatDt(d['sent_at'])),
+                _DetailTile('예약일', _formatDt(d['scheduled_at'])),
+                _DetailTile('발송수', d['sent_count']),
+              ],
             ),
+            const SizedBox(height: 24),
+            Text('제목', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text('${d['title'] ?? '-'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 16),
+            Text('내용', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text('${d['body'] ?? '-'}'),
+            if (d['link_url'] != null) ...[
+              const SizedBox(height: 16),
+              Text('링크', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              const SizedBox(height: 4),
+              Text('${d['link_url']}'),
+            ],
+            if (d['target_type'] == '타겟발송') ...[
+              const SizedBox(height: 16),
+              Text('타겟 조건', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              const SizedBox(height: 4),
+              Text(
+                '성별: ${d['target_genders'] ?? '-'} / '
+                '연령: ${d['target_age_min'] ?? '-'}~${d['target_age_max'] ?? '-'} / '
+                '지역: ${d['target_provinces'] ?? '-'}',
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -687,80 +719,78 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AdminDetailBackBar(backPath: '/operations/fcm'),
-          const Text(
-            '발송 타겟 및 방식 설정',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-          ),
-          const SizedBox(height: 24),
-          DropdownButtonFormField<String>(
-            initialValue: _sendMethod,
-            decoration: const InputDecoration(labelText: '발송 방식'),
-            items: const [
-              DropdownMenuItem(value: 'immediate', child: Text('즉시발송')),
-              DropdownMenuItem(value: 'scheduled', child: Text('예약발송')),
-            ],
-            onChanged: (v) => setState(() => _sendMethod = v ?? 'immediate'),
-          ),
-          if (_sendMethod == 'scheduled') ...[
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: _pickSchedule,
-              child: Text(
-                _scheduledAt == null
-                    ? '예약 일시 선택'
-                    : '예약: ${formatYmdHmDots(_scheduledAt!)}',
+    return AdminContentArea(
+      screenId: fcmSendTypeSpec.id,
+      subtitle: fcmSendTypeSpec.subtitle,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AdminDetailBackBar(backPath: '/operations/fcm'),
+            _opsSectionTitle('발송 방식'),
+            DropdownButtonFormField<String>(
+              initialValue: _sendMethod,
+              decoration: const InputDecoration(labelText: '즉시발송 / 예약발송'),
+              items: const [
+                DropdownMenuItem(value: 'immediate', child: Text('즉시발송')),
+                DropdownMenuItem(value: 'scheduled', child: Text('예약발송')),
+              ],
+              onChanged: (v) => setState(() => _sendMethod = v ?? 'immediate'),
+            ),
+            if (_sendMethod == 'scheduled') ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _pickSchedule,
+                child: Text(
+                  _scheduledAt == null
+                      ? '예약 일시 선택'
+                      : '예약: ${formatYmdHmDots(_scheduledAt!)}',
+                ),
               ),
+            ],
+            const SizedBox(height: 24),
+            _opsSectionTitle('발송 대상'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      if (_sendMethod == 'scheduled' && _scheduledAt == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('예약 일시를 선택해주세요.')),
+                        );
+                        return;
+                      }
+                      _go('/operations/fcm/new/all');
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                    ),
+                    child: const Text('전체발송'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_sendMethod == 'scheduled' && _scheduledAt == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('예약 일시를 선택해주세요.')),
+                        );
+                        return;
+                      }
+                      _go('/operations/fcm/new/target');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                    ),
+                    child: const Text('타겟발송'),
+                  ),
+                ),
+              ],
             ),
           ],
-          const SizedBox(height: 32),
-          const Text('발송 대상', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    if (_sendMethod == 'scheduled' && _scheduledAt == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('예약 일시를 선택해주세요.')),
-                      );
-                      return;
-                    }
-                    _go('/operations/fcm/new/all');
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                  ),
-                  child: const Text('전체발송'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (_sendMethod == 'scheduled' && _scheduledAt == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('예약 일시를 선택해주세요.')),
-                      );
-                      return;
-                    }
-                    _go('/operations/fcm/new/target');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                  ),
-                  child: const Text('타겟발송'),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -803,6 +833,12 @@ class _FcmAllSendFormScreenState extends ConsumerState<FcmAllSendFormScreen> {
   }
 
   Future<void> _submit({bool test = false}) async {
+    if (_title.text.trim().isEmpty || _body.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('알림 제목과 내용을 입력해주세요.')),
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
       final body = _buildBody();
@@ -814,6 +850,9 @@ class _FcmAllSendFormScreenState extends ConsumerState<FcmAllSendFormScreen> {
       } else {
         await ref.read(adminApiProvider).createFcm(body);
         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('발송이 완료되었습니다.')),
+        );
         adminNavigateReplace(ref, '/operations/fcm');
       }
     } catch (e) {
@@ -827,28 +866,30 @@ class _FcmAllSendFormScreenState extends ConsumerState<FcmAllSendFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AdminDetailBackBar(backPath: '/operations/fcm/new'),
-          const Text('전체발송', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-          const SizedBox(height: 16),
-          TextField(controller: _title, decoration: const InputDecoration(labelText: '알림 제목')),
-          const SizedBox(height: 12),
-          TextField(controller: _body, decoration: const InputDecoration(labelText: '알림 내용'), maxLines: 4),
-          const SizedBox(height: 12),
-          TextField(controller: _link, decoration: const InputDecoration(labelText: '링크(URL)')),
-          const Spacer(),
-          Row(
-            children: [
-              OutlinedButton(onPressed: _loading ? null : () => _submit(test: true), child: const Text('테스트 발송')),
-              const SizedBox(width: 12),
-              ElevatedButton(onPressed: _loading ? null : () => _submit(), child: const Text('발송하기')),
-            ],
-          ),
-        ],
+    return AdminContentArea(
+      screenId: fcmAllSendSpec.id,
+      subtitle: fcmAllSendSpec.subtitle,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AdminDetailBackBar(backPath: '/operations/fcm/new'),
+            _opsSectionTitle('내용 작성'),
+            TextField(controller: _title, decoration: const InputDecoration(labelText: '알림 제목')),
+            const SizedBox(height: 12),
+            TextField(controller: _body, decoration: const InputDecoration(labelText: '알림 내용'), maxLines: 4),
+            const SizedBox(height: 12),
+            TextField(controller: _link, decoration: const InputDecoration(labelText: '링크(URL)')),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                OutlinedButton(onPressed: _loading ? null : () => _submit(test: true), child: const Text('테스트 발송')),
+                const SizedBox(width: 12),
+                ElevatedButton(onPressed: _loading ? null : () => _submit(), child: const Text('발송하기')),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -911,6 +952,12 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('성별을 1개 이상 선택해주세요.')));
       return;
     }
+    if (_title.text.trim().isEmpty || _body.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('알림 제목과 내용을 입력해주세요.')),
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
       final body = _buildBody();
@@ -922,6 +969,9 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
       } else {
         await ref.read(adminApiProvider).createFcm(body);
         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('발송이 완료되었습니다.')),
+        );
         adminNavigateReplace(ref, '/operations/fcm');
       }
     } catch (e) {
@@ -935,77 +985,80 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AdminDetailBackBar(backPath: '/operations/fcm/new'),
-          const Text('타겟발송', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text('성별', style: TextStyle(fontWeight: FontWeight.w600)),
-              FilterChip(
-                label: const Text('남성'),
-                selected: _targetMale,
-                onSelected: (v) => setState(() => _targetMale = v),
-              ),
-              FilterChip(
-                label: const Text('여성'),
-                selected: _targetFemale,
-                onSelected: (v) => setState(() => _targetFemale = v),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: _ageMin,
-                  decoration: const InputDecoration(labelText: '연령대(최소)'),
-                  items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
-                  onChanged: (v) => setState(() => _ageMin = v ?? 20),
+    return AdminContentArea(
+      screenId: fcmTargetSendSpec.id,
+      subtitle: fcmTargetSendSpec.subtitle,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AdminDetailBackBar(backPath: '/operations/fcm/new'),
+            _opsSectionTitle('타겟 리스트'),
+            Wrap(
+              spacing: 16,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Text('성별', style: TextStyle(fontWeight: FontWeight.w600)),
+                FilterChip(
+                  label: const Text('남성'),
+                  selected: _targetMale,
+                  onSelected: (v) => setState(() => _targetMale = v),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: _ageMax,
-                  decoration: const InputDecoration(labelText: '연령대(최대)'),
-                  items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
-                  onChanged: (v) => setState(() => _ageMax = v ?? 70),
+                FilterChip(
+                  label: const Text('여성'),
+                  selected: _targetFemale,
+                  onSelected: (v) => setState(() => _targetFemale = v),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          RegionMultiSelectField(
-            selected: _selectedRegions,
-            onChanged: (v) => setState(() => _selectedRegions = v),
-          ),
-          const SizedBox(height: 16),
-          TextField(controller: _title, decoration: const InputDecoration(labelText: '알림 제목')),
-          const SizedBox(height: 12),
-          TextField(controller: _body, decoration: const InputDecoration(labelText: '알림 내용'), maxLines: 4),
-          const SizedBox(height: 12),
-          TextField(controller: _link, decoration: const InputDecoration(labelText: '링크(URL)')),
-          const Spacer(),
-          Row(
-            children: [
-              OutlinedButton(onPressed: _loading ? null : () => _submit(test: true), child: const Text('테스트 발송')),
-              const SizedBox(width: 12),
-              ElevatedButton(onPressed: _loading ? null : () => _submit(), child: const Text('발송하기')),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    initialValue: _ageMin,
+                    decoration: const InputDecoration(labelText: '연령대(최소)'),
+                    items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
+                    onChanged: (v) => setState(() => _ageMin = v ?? 20),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    initialValue: _ageMax,
+                    decoration: const InputDecoration(labelText: '연령대(최대)'),
+                    items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
+                    onChanged: (v) => setState(() => _ageMax = v ?? 70),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            RegionMultiSelectField(
+              selected: _selectedRegions,
+              onChanged: (v) => setState(() => _selectedRegions = v),
+            ),
+            _opsSectionTitle('내용 작성'),
+            TextField(controller: _title, decoration: const InputDecoration(labelText: '알림 제목')),
+            const SizedBox(height: 12),
+            TextField(controller: _body, decoration: const InputDecoration(labelText: '알림 내용'), maxLines: 4),
+            const SizedBox(height: 12),
+            TextField(controller: _link, decoration: const InputDecoration(labelText: '링크(URL)')),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                OutlinedButton(onPressed: _loading ? null : () => _submit(test: true), child: const Text('테스트 발송')),
+                const SizedBox(width: 12),
+                ElevatedButton(onPressed: _loading ? null : () => _submit(), child: const Text('발송하기')),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
 class NoticeListScreen extends ConsumerStatefulWidget {
   const NoticeListScreen({super.key});
 
@@ -1120,7 +1173,11 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : items.isEmpty
-              ? const AdminEmptyList()
+              ? AdminEmptyList(
+                  message: _keyword.text.trim().isNotEmpty
+                      ? '검색 결과가 없습니다.'
+                      : '등록된 공지사항이 없습니다.',
+                )
               : Column(
                   children: [
                     Expanded(
@@ -1301,8 +1358,9 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
   Widget build(BuildContext context) {
     if (_loadingData) return const Center(child: CircularProgressIndicator());
 
-    return Padding(
-      padding: const EdgeInsets.all(32),
+    return AdminContentArea(
+      screenId: noticeFormSpec.id,
+      subtitle: widget.noticeId == null ? '공지 등록' : '공지 수정',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

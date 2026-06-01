@@ -96,6 +96,49 @@ const inquiryWithdrawnSpec = AdminScreenSpec(
   filters: [],
 );
 
+const popupListSpec = AdminScreenSpec(
+  id: 'NTC-01',
+  subtitle: '팝업 목록 관리',
+  showDateRange: false,
+  filters: [],
+);
+
+const popupFormSpec = AdminScreenSpec(
+  id: 'NTC-01-01',
+  subtitle: '팝업 등록 및 수정',
+  showDateRange: false,
+  filters: [],
+);
+
+const fcmListSpec = AdminScreenSpec(
+  id: 'NTC-01-02',
+  subtitle: 'FCM 발송 이력',
+  showDateRange: true,
+  filters: [],
+  searchHint: '제목 검색',
+);
+
+const fcmSendTypeSpec = AdminScreenSpec(
+  id: 'NTC-01-03',
+  subtitle: '발송 타겟 및 방식 설정',
+  showDateRange: false,
+  filters: [],
+);
+
+const fcmAllSendSpec = AdminScreenSpec(
+  id: 'NTC-01-04',
+  subtitle: 'FCM 전체발송',
+  showDateRange: false,
+  filters: [],
+);
+
+const fcmTargetSendSpec = AdminScreenSpec(
+  id: 'NTC-01-05',
+  subtitle: 'FCM 타겟발송',
+  showDateRange: false,
+  filters: [],
+);
+
 const noticeSpec = AdminScreenSpec(
   id: 'NTC-01-06',
   subtitle: '공지사항 목록',
@@ -108,4 +151,11 @@ const noticeSpec = AdminScreenSpec(
     ('manage', '관리'),
   ],
   searchHint: '검색어를 입력하세요',
+);
+
+const noticeFormSpec = AdminScreenSpec(
+  id: 'NTC-01-07',
+  subtitle: '공지사항 등록 및 수정',
+  showDateRange: false,
+  filters: [],
 );

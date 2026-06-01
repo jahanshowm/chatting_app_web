@@ -13,6 +13,8 @@ class ApiClient {
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
         headers: {'Content-Type': 'application/json'},
+        // statuses=waiting&statuses=closed 형태로 배열 쿼리 전송
+        listFormat: ListFormat.multi,
       ),
     );
 

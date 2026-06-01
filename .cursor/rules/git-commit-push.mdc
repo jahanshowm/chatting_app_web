@@ -1,0 +1,52 @@
+---
+description: 멀티 레포 git add/commit/push (cd 없이 — 에이전트·사용자 복붙 공통)
+alwaysApply: true
+---
+
+# Git 커밋·푸시 (3레포)
+
+사용자가 **커밋**, **푸시**, **올려줘**, **복붙용 git** 등을 요청할 때만 실행·안내한다. 요청 없이 커밋/푸시하지 않는다.
+
+## cd 금지 (필수)
+
+- **에이전트**: Shell `working_directory`로 레포 지정. 명령 문자열에 `cd` 넣지 않는다.
+- **사용자 복붙용**: 터미널을 **해당 레포 폴더에서 연 뒤** 아래만 붙여넣는다. `cd ...` 줄을 절대 포함하지 않는다.
+
+| 레포 | 터미널 cwd / working_directory |
+|------|--------------------------------|
+| Flutter 앱 | `randomchat/` |
+| NestJS 백엔드 | `randomchat_back/` |
+| 어드민 CMS | `randomchat_admin/` |
+
+## 레포별 명령 템플릿 (cd 없음)
+
+```bash
+git add -A
+
+git commit -m "$(cat <<'EOF'
+Feat: 한 줄 요약
+
+- 변경 요지 bullet
+EOF
+)"
+
+git push origin main
+```
+
+순서: `git status` 확인 → `git add` → `git commit` → `git status` → `git push`
+
+## 커밋 메시지
+
+- 스타일: `Feat: ...` (`git log -3` 참고)
+- HEREDOC: `git commit -m "$(cat <<'EOF' ... EOF)"`
+- why 중심, 1~2문장 + bullet
+
+## 멀티 레포
+
+변경 있는 레포만 각각 add → commit → push. 에이전트는 레포마다 **별도 Shell**, `working_directory`만 다르게.
+
+## 주의
+
+- `git config` 수정 금지, force push 금지 (사용자 명시 시만)
+- `.env` 등 시크릿 커밋 금지
+- pre-commit 실패 시 amend 금지 → 수정 후 새 커밋

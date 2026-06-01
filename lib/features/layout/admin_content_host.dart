@@ -59,6 +59,9 @@ class AdminContentHost extends StatelessWidget {
     }
 
     if (segments.first == 'operations') {
+      if (segments.length == 1) {
+        return const PopupListScreen();
+      }
       if (segments.length >= 2 && segments[1] == 'popups') {
         if (segments.length >= 3 && segments[2] == 'new') return const PopupFormScreen();
         if (segments.length >= 4 && segments[3] == 'edit') {
