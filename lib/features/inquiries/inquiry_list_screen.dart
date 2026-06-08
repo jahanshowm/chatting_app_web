@@ -134,7 +134,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
             filters: const [],
             keywordController: _keyword,
             hint: spec.searchHint,
-            useSearchIcon: true,
+            useSearchIcon: false,
             onSearch: () {
               setState(() => _page = 1);
               _load();
@@ -145,15 +145,19 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : items.isEmpty
-              ? const AdminEmptyList()
-              : Column(
+          : AdminListPanel(
+              child: items.isEmpty
+                  ? const SizedBox(
+                      height: 240,
+                      child: Center(child: AdminEmptyList()),
+                    )
+                  : Column(
                   children: [
                     Expanded(
                       child: DataTable2(
                         columnSpacing: 12,
                         minWidth: 960,
-                        headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+                        headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
                         columns: const [
                           DataColumn2(label: Text('성별')),
                           DataColumn2(label: Text('이름')),
@@ -166,7 +170,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
                           return DataRow2(
                             onTap: () => _openDetail(id),
                             cells: [
-                              DataCell(Text('${row['gender'] ?? '-'}')),
+                              DataCell(GenderCellText('${row['gender'] ?? '-'}')),
                               DataCell(Text('${row['name'] ?? '-'}')),
                               DataCell(Text('${row['title'] ?? '-'}')),
                               DataCell(Text('${row['date'] ?? '-'}')),
@@ -188,6 +192,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
                     ),
                   ],
                 ),
+            ),
     );
   }
 }

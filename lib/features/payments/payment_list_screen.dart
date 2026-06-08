@@ -23,7 +23,7 @@ class PaymentListScreen extends ConsumerStatefulWidget {
 class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
   String _period = 'daily';
   late DateTime _start = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-  late DateTime _end = DateTime.now();
+  late DateTime _end = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
   final _keyword = TextEditingController();
   String _filter = 'all';
   int _page = 1;
@@ -162,20 +162,24 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
         ],
       ),
       summary: Text(
-        '조회 합계 : ${fmt.format(_data?.selectedSum ?? 0)}원',
+        '선택합계 ${fmt.format(_data?.selectedSum ?? 0)}원',
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : items.isEmpty
-              ? const AdminEmptyList()
-              : Column(
+          : AdminListPanel(
+              child: items.isEmpty
+                  ? const SizedBox(
+                      height: 240,
+                      child: Center(child: AdminEmptyList()),
+                    )
+                  : Column(
                   children: [
                     Expanded(
                       child: DataTable2(
                         columnSpacing: 12,
                         minWidth: 960,
-                        headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+                        headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
                         columns: const [
                           DataColumn2(label: Text('성별')),
                           DataColumn2(label: Text('이름')),
@@ -190,7 +194,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                             fmt,
                           );
                           return DataRow(cells: [
-                            DataCell(Text('${row['gender'] ?? '-'}')),
+                            DataCell(GenderCellText('${row['gender'] ?? '-'}')),
                             DataCell(Text('${row['name'] ?? '-'}')),
                             DataCell(Text('${row['phone_number'] ?? '-'}')),
                             DataCell(Text(productLabel)),
@@ -211,6 +215,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                     ),
                   ],
                 ),
+            ),
     );
   }
 }

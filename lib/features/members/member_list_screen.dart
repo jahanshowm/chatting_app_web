@@ -23,7 +23,7 @@ class MemberListScreen extends ConsumerStatefulWidget {
 class _MemberListScreenState extends ConsumerState<MemberListScreen> {
   late String _tab = widget.tab;
   late DateTime _start = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-  late DateTime _end = DateTime.now();
+  late DateTime _end = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
   final _keyword = TextEditingController();
   String _filter = 'all';
   int _page = 1;
@@ -182,16 +182,20 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : items.isEmpty
-              ? const AdminEmptyList()
-              : Column(
+          : AdminListPanel(
+              child: items.isEmpty
+                  ? const SizedBox(
+                      height: 240,
+                      child: Center(child: AdminEmptyList()),
+                    )
+                  : Column(
                   children: [
                     Expanded(
                       child: DataTable2(
                         columnSpacing: 12,
                         horizontalMargin: 12,
                         minWidth: 960,
-                        headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+                        headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
                         columns: [
                           DataColumn2(
                             label: Checkbox(
@@ -253,6 +257,11 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                                     ),
                                   );
                                 }
+                                if (c.$1 == 'gender') {
+                                  return DataCell(
+                                    GenderCellText('${row[c.$1] ?? '-'}'),
+                                  );
+                                }
                                 return DataCell(Text('${row[c.$1] ?? '-'}'));
                               }),
                             ],
@@ -271,6 +280,7 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                     ),
                   ],
                 ),
+            ),
     );
   }
 }

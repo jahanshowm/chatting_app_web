@@ -132,11 +132,29 @@ class _PeriodChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      selectedColor: AppColors.secondary,
-      onSelected: (_) => onTap(),
+    return Material(
+      color: selected ? AppColors.periodSelected : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: selected ? AppColors.periodSelected : AppColors.border,
+          width: 0.5,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              color: selected ? Colors.white : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

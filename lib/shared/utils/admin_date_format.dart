@@ -25,3 +25,24 @@ String formatAmPmTime(DateTime dt) {
   final period = local.hour < 12 ? 'AM' : 'PM';
   return '$hour12:$m$period';
 }
+
+String formatYmdDots(DateTime dt) {
+  final local = dt.toLocal();
+  final m = local.month.toString().padLeft(2, '0');
+  final d = local.day.toString().padLeft(2, '0');
+  return '${local.year}.$m.$d';
+}
+
+/// Figma INQ-01-01 날짜 구분선 — 2026년 03월 29일
+String formatKoreanDateDivider(DateTime dt) {
+  final local = dt.toLocal();
+  final m = local.month.toString().padLeft(2, '0');
+  final d = local.day.toString().padLeft(2, '0');
+  return '${local.year}년 $m월 $d일';
+}
+
+bool isSameCalendarDay(DateTime a, DateTime b) {
+  final la = a.toLocal();
+  final lb = b.toLocal();
+  return la.year == lb.year && la.month == lb.month && la.day == lb.day;
+}

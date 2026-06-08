@@ -2,11 +2,13 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
+import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
 import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_detail_back_bar.dart';
+import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/member_info_header.dart';
 
 class MemberDetailScreen extends ConsumerStatefulWidget {
@@ -111,67 +113,94 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AdminDetailBackBar(backPath: widget.listPath),
-          MemberInfoHeader(
-            data: _detail?.data ?? {},
-            photos: _detail?.photos ?? [],
-          ),
-          const SizedBox(height: 32),
-          sectionTitle('활동내역'),
-          AdminTabBar(
-            tabs: const [
-              ('report', '신고'),
-              ('block', '차단'),
-              ('payment', '결제내역'),
-              ('inquiry', '문의내역'),
-            ],
-            selected: _activityTab,
-            onSelected: (tab) {
-              setState(() {
-                _activityTab = tab;
-                _page = 1;
-              });
-              _loadActivities();
-            },
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 320,
-            child: DataTable2(
-              columnSpacing: 12,
-              minWidth: 800,
-              headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
-              columns: _activityColumns.map((c) => DataColumn2(label: Text(c.$2))).toList(),
-              rows: (_activities?.items ?? []).map((row) {
-                final inquiryId = row['id']?.toString();
-                return DataRow2(
-                  onTap: _activityTab == 'inquiry' && inquiryId != null
-                      ? () => adminNavigateReplace(
-                            ref,
-                            '/inquiries/$inquiryId?from=${Uri.encodeComponent(widget.listPath)}',
-                          )
-                      : null,
-                  cells: _activityColumns
-                      .map((c) => DataCell(Text('${row[c.$1] ?? '-'}')))
-                      .toList(),
-                );
-              }).toList(),
+    final activityItems = _activities?.items ?? [];
+
+    return AdminContentArea(
+      screenId: memberDetailSpec.id,
+      subtitle: memberDetailSpec.subtitle,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AdminDetailBackBar(backPath: widget.listPath),
+            MemberInfoHeader(
+              data: _detail?.data ?? {},
+              photos: _detail?.photos ?? [],
             ),
-          ),
-          PaginationBar(
-            page: _page,
-            totalPages: _activities?.totalPages ?? 1,
-            onPageChanged: (p) {
-              setState(() => _page = p);
-              _loadActivities();
-            },
-          ),
-        ],
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(child: sectionTitle('활동내역')),
+                AdminChipTabBar(
+                  tabs: const [
+                    ('report', '신고'),
+                    ('block', '차단'),
+                    ('payment', '결제내역'),
+                    ('inquiry', '문의내역'),
+                  ],
+                  selected: _activityTab,
+                  onSelected: (tab) {
+                    setState(() {
+                      _activityTab = tab;
+                      _page = 1;
+                    });
+                    _loadActivities();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            AdminListPanel(
+              child: activityItems.isEmpty
+                  ? const SizedBox(
+                      height: 240,
+                      child: Center(
+                        child: AdminEmptyList(message: '활동 내역이 없습니다.'),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        SizedBox(
+                          height: 320,
+                          child: DataTable2(
+                            columnSpacing: 12,
+                            minWidth: 800,
+                            headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
+                            columns: _activityColumns
+                                .map((c) => DataColumn2(label: Text(c.$2)))
+                                .toList(),
+                            rows: activityItems.map((row) {
+                              final inquiryId = row['id']?.toString();
+                              return DataRow2(
+                                onTap: _activityTab == 'inquiry' && inquiryId != null
+                                    ? () => adminNavigateReplace(
+                                          ref,
+                                          '/inquiries/$inquiryId?from=${Uri.encodeComponent(widget.listPath)}',
+                                        )
+                                    : null,
+                                cells: _activityColumns.map((c) {
+                                  if (c.$1 == 'gender') {
+                                    return DataCell(GenderCellText('${row[c.$1] ?? '-'}'));
+                                  }
+                                  return DataCell(Text('${row[c.$1] ?? '-'}'));
+                                }).toList(),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        PaginationBar(
+                          page: _page,
+                          totalPages: _activities?.totalPages ?? 1,
+                          onPageChanged: (p) {
+                            setState(() => _page = p);
+                            _loadActivities();
+                          },
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

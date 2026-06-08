@@ -17,6 +17,13 @@ class AdminScreenSpec {
   final String searchHint;
 }
 
+const dashboardSpec = AdminScreenSpec(
+  id: 'DAS-01',
+  subtitle: '접속자·신규가입·결제 현황',
+  showPeriod: true,
+  filters: [],
+);
+
 const memberNewSpec = AdminScreenSpec(
   id: 'CMS-01-01',
   subtitle: '가입일 기준 최신순 · 10건씩 노출',
@@ -67,6 +74,13 @@ const memberBlockSpec = AdminScreenSpec(
   searchHint: '이름 검색',
 );
 
+const memberDetailSpec = AdminScreenSpec(
+  id: 'CMS-02',
+  subtitle: '회원 상세 · 활동내역 5건씩 노출',
+  showDateRange: false,
+  filters: [],
+);
+
 const paymentSpec = AdminScreenSpec(
   id: 'PG-01',
   subtitle: '결제완료 일시 기준 최신순 · 10건씩 노출',
@@ -84,7 +98,14 @@ const inquiryActiveSpec = AdminScreenSpec(
   id: 'INQ-01',
   subtitle: '활동 회원 문의 · 처리상태 필터',
   showDateRange: false,
-  searchHint: '이름 또는 문의제목 검색',
+  searchHint: '검색어를 입력해주세요',
+  filters: [],
+);
+
+const inquiryDetailSpec = AdminScreenSpec(
+  id: 'INQ-01-01',
+  subtitle: '문의 답변 · 채팅형 UI',
+  showDateRange: false,
   filters: [],
 );
 
@@ -92,7 +113,7 @@ const inquiryWithdrawnSpec = AdminScreenSpec(
   id: 'INQ-01-02',
   subtitle: '탈퇴 회원 문의 · 처리상태 필터',
   showDateRange: false,
-  searchHint: '이름 또는 문의제목 검색',
+  searchHint: '검색어를 입력해주세요',
   filters: [],
 );
 

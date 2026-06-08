@@ -137,6 +137,8 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
     final totalCount = _data?.total ?? items.length;
 
     return AdminContentArea(
+      screenId: spec.id,
+      subtitle: spec.subtitle,
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -167,7 +169,7 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
             filters: spec.filters,
             keywordController: _keyword,
             hint: spec.searchHint,
-            useSearchIcon: false,
+            useSearchIcon: _tab == 'block',
             onFilterChanged: (v) => setState(() => _filter = v),
             onSearch: () {
               setState(() => _page = 1);

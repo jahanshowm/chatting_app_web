@@ -83,23 +83,33 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
         alignment: Alignment.centerLeft,
         child: ElevatedButton(
           onPressed: () => adminNavigateReplace(ref, '/operations/popups/new'),
-          child: const Text('팝업 등록'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.periodSelected,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('등록'),
         ),
       ),
       summary: Row(
         children: [
           const Spacer(),
-          DeleteActionButton(selectedCount: _selected.length, onDelete: _deleteSelected),
+          SelectDeleteButton(selectedCount: _selected.length, onDelete: _deleteSelected),
         ],
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-              ? const AdminEmptyList(message: '등록된 팝업이 없습니다.')
-              : DataTable2(
+          : AdminListPanel(
+              child: _items.isEmpty
+                  ? const SizedBox(
+                      height: 240,
+                      child: Center(
+                        child: AdminEmptyList(message: '등록된 팝업이 없습니다.'),
+                      ),
+                    )
+                  : DataTable2(
                   columnSpacing: 12,
                   minWidth: 1100,
-                  headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+                  headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
                   columns: [
                     DataColumn2(
                       label: Checkbox(
@@ -121,7 +131,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                     const DataColumn2(label: Text('제목')),
                     const DataColumn2(label: Text('조회수')),
                     const DataColumn2(label: Text('등록일')),
-                    const DataColumn2(label: Text('사용여부')),
+                    const DataColumn2(label: Text('사용')),
                     const DataColumn2(label: Text('관리')),
                   ],
                   rows: _items.map((row) {
@@ -173,6 +183,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                     );
                   }).toList(),
                 ),
+            ),
     );
   }
 }
@@ -233,7 +244,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
 
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요')));
       return;
     }
     if (widget.popupId == null && _image == null) {
@@ -1144,6 +1155,10 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
             children: [
               ElevatedButton(
                 onPressed: () => adminNavigateReplace(ref, '/operations/notices/new'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.periodSelected,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('등록'),
               ),
             ],
@@ -1167,24 +1182,30 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
       summary: Row(
         children: [
           const Spacer(),
-          DeleteActionButton(selectedCount: _selected.length, onDelete: _deleteSelected),
+          SelectDeleteButton(selectedCount: _selected.length, onDelete: _deleteSelected),
         ],
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : items.isEmpty
-              ? AdminEmptyList(
-                  message: _keyword.text.trim().isNotEmpty
-                      ? '검색 결과가 없습니다.'
-                      : '등록된 공지사항이 없습니다.',
-                )
-              : Column(
+          : AdminListPanel(
+              child: items.isEmpty
+                  ? SizedBox(
+                      height: 240,
+                      child: Center(
+                        child: AdminEmptyList(
+                          message: _keyword.text.trim().isNotEmpty
+                              ? '검색 결과가 없습니다.'
+                              : '등록된 공지사항이 없습니다.',
+                        ),
+                      ),
+                    )
+                  : Column(
                   children: [
                     Expanded(
                       child: DataTable2(
                         columnSpacing: 12,
                         minWidth: 800,
-                        headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+                        headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
                         columns: [
                           DataColumn2(
                             label: Checkbox(
@@ -1201,9 +1222,8 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                             ),
                             size: ColumnSize.S,
                           ),
+                          const DataColumn2(label: Text('NO')),
                           const DataColumn2(label: Text('제목')),
-                          const DataColumn2(label: Text('게시')),
-                          const DataColumn2(label: Text('고정')),
                           const DataColumn2(label: Text('조회수')),
                           const DataColumn2(label: Text('일자')),
                           const DataColumn2(label: Text('관리')),
@@ -1225,9 +1245,8 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                                   });
                                 },
                               )),
+                              DataCell(Text('${row['no'] ?? '-'}')),
                               DataCell(Text('${row['title'] ?? '-'}')),
-                              DataCell(Text(row['is_published'] == true ? '게시' : '비게시')),
-                              DataCell(Text(row['is_pinned'] == true ? '고정' : '-')),
                               DataCell(Text('${row['view_count'] ?? 0}')),
                               DataCell(Text('${row['date'] ?? '-'}')),
                               DataCell(
@@ -1253,6 +1272,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                     ),
                   ],
                 ),
+            ),
     );
   }
 }
@@ -1322,11 +1342,11 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
 
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요')));
       return;
     }
     if (NoticeRichEditor.isEmpty(_quill)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('내용을 입력해주세요.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('내용을 입력해주세요')));
       return;
     }
     setState(() => _loading = true);

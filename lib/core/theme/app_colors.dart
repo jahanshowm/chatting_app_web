@@ -13,4 +13,9 @@ class AppColors {
   static const Color tableHeader = Color(0xFFF9F9F9);
   static const Color male = Color(0xFF4A90E2);
   static const Color female = Color(0xFFE24A90);
+  static const Color periodSelected = Color(0xFF656565);
+  static const Color chatBubble = Color(0xFFF8F8F8);
+  static const Color statusWaiting = Color(0xFFFF2828);
+  static const Color statusInProgress = Color(0xFFFF8D28);
+  static const Color statusCompleted = Color(0xFF15B200);
 }

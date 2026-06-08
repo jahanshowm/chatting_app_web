@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
+import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
@@ -20,7 +21,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String _period = 'daily';
   late DateTime _start = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-  late DateTime _end = DateTime.now();
+  late DateTime _end = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
   List<VisitorChartPoint> _visitors = [];
   List<Map<String, dynamic>> _signups = [];
   List<Map<String, dynamic>> _payments = [];
@@ -70,9 +71,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _load();
   }
 
+  double get _chartMaxY {
+    if (_visitors.isEmpty) return 10;
+    var max = 0;
+    for (final p in _visitors) {
+      if (p.male > max) max = p.male;
+      if (p.female > max) max = p.female;
+    }
+    return (max + 2).toDouble();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdminContentArea(
+      screenId: dashboardSpec.id,
+      subtitle: dashboardSpec.subtitle,
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -87,13 +100,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 if (p == 'weekly') {
                   _start = DateTime(today.year, today.month, today.day)
                       .subtract(const Duration(days: 6));
-                  _end = today;
+                  _end = DateTime(today.year, today.month, today.day);
                 } else if (p == 'monthly') {
                   _start = DateTime(today.year, today.month, 1);
-                  _end = today;
+                  _end = DateTime(today.year, today.month, today.day);
                 } else {
-                  _start = DateTime(today.year, today.month, today.day);
-                  _end = today;
+                  final d = DateTime(today.year, today.month, today.day);
+                  _start = d;
+                  _end = d;
                 }
               });
               _load();
@@ -119,17 +133,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
-                    height: 340,
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                    height: 360,
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text('접속자 현황', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
                         Row(
                           children: [
                             _LegendDot(color: AppColors.male, label: '남성'),
@@ -141,23 +153,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         Expanded(
                           child: _visitors.isEmpty
                               ? const Center(child: Text('접속자 데이터가 없습니다.'))
-                              : BarChart(
-                                  BarChartData(
+                              : LineChart(
+                                  LineChartData(
+                                    minX: 0,
+                                    maxX: (_visitors.length - 1).toDouble(),
+                                    minY: 0,
+                                    maxY: _chartMaxY,
                                     gridData: const FlGridData(show: true),
                                     borderData: FlBorderData(show: false),
-                                    barTouchData: BarTouchData(
-                                      enabled: true,
-                                      touchTooltipData: BarTouchTooltipData(
-                                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                          if (rodIndex != 0) return null;
-                                          if (groupIndex < 0 || groupIndex >= _visitors.length) {
-                                            return null;
-                                          }
-                                          final point = _visitors[groupIndex];
-                                          return BarTooltipItem(
-                                            '${point.label}\n남성 : ${point.male}명\n여성 : ${point.female}명',
-                                            const TextStyle(color: Colors.white, fontSize: 12),
-                                          );
+                                    lineTouchData: LineTouchData(
+                                      touchTooltipData: LineTouchTooltipData(
+                                        getTooltipItems: (spots) {
+                                          return spots.map((spot) {
+                                            final i = spot.x.toInt();
+                                            if (i < 0 || i >= _visitors.length) {
+                                              return null;
+                                            }
+                                            final point = _visitors[i];
+                                            final male = point.male.toString().padLeft(2, '0');
+                                            final female = point.female.toString().padLeft(2, '0');
+                                            return LineTooltipItem(
+                                              '${point.label}, 남성 : $male명, 여성 : $female명',
+                                              const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                              ),
+                                            );
+                                          }).toList();
                                         },
                                       ),
                                     ),
@@ -183,28 +205,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       leftTitles: const AxisTitles(
                                         sideTitles: SideTitles(showTitles: true, reservedSize: 36),
                                       ),
-                                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                      topTitles: const AxisTitles(
+                                        sideTitles: SideTitles(showTitles: false),
+                                      ),
+                                      rightTitles: const AxisTitles(
+                                        sideTitles: SideTitles(showTitles: false),
+                                      ),
                                     ),
-                                    barGroups: [
-                                      for (var i = 0; i < _visitors.length; i++)
-                                        BarChartGroupData(
-                                          x: i,
-                                          barRods: [
-                                            BarChartRodData(
-                                              toY: _visitors[i].male.toDouble(),
-                                              color: AppColors.male,
-                                              width: 10,
-                                              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                                            ),
-                                            BarChartRodData(
-                                              toY: _visitors[i].female.toDouble(),
-                                              color: AppColors.female,
-                                              width: 10,
-                                              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                                            ),
-                                          ],
-                                        ),
+                                    lineBarsData: [
+                                      LineChartBarData(
+                                        spots: [
+                                          for (var i = 0; i < _visitors.length; i++)
+                                            FlSpot(i.toDouble(), _visitors[i].male.toDouble()),
+                                        ],
+                                        isCurved: true,
+                                        color: AppColors.male,
+                                        barWidth: 2,
+                                        dotData: const FlDotData(show: true),
+                                      ),
+                                      LineChartBarData(
+                                        spots: [
+                                          for (var i = 0; i < _visitors.length; i++)
+                                            FlSpot(i.toDouble(), _visitors[i].female.toDouble()),
+                                        ],
+                                        isCurved: true,
+                                        color: AppColors.female,
+                                        barWidth: 2,
+                                        dotData: const FlDotData(show: true),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -212,50 +240,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _TopTable(
-                          title: '신규가입 현황',
-                          screenLink: '/members/new',
-                          rows: _signups,
-                          columns: const [
-                            ('gender', '성별'),
-                            ('name', '이름'),
-                            ('birth_date', '생년월일'),
-                            ('phone_number', '휴대폰번호'),
-                            ('joined_at', '가입일'),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: _TopTable(
-                          title: '결제 현황',
-                          screenLink: '/payments',
-                          rows: _payments,
-                          columns: const [
-                            ('gender', '성별'),
-                            ('name', '이름'),
-                            ('phone_number', '휴대폰번호'),
-                            ('product_name', '상품'),
-                            ('paid_at', '결제일'),
-                          ],
-                          formatCell: (key, row, fmt) {
-                            if (key == 'product_name') {
-                              return formatProductWithAmount(
-                                row['product_name']?.toString(),
-                                row['amount'],
-                                fmt,
-                              );
-                            }
-                            return '${row[key] ?? '-'}';
-                          },
-                        ),
-                      ),
+                  const SizedBox(height: 24),
+                  _TopTable(
+                    title: '신규가입 현황',
+                    screenLink: '/members/new',
+                    rows: _signups,
+                    columns: const [
+                      ('gender', '성별'),
+                      ('name', '이름'),
+                      ('birth_date', '생년월일'),
+                      ('phone_number', '휴대폰번호'),
+                      ('joined_at', '가입일'),
                     ],
+                  ),
+                  const SizedBox(height: 24),
+                  _TopTable(
+                    title: '결제 현황',
+                    screenLink: '/payments',
+                    rows: _payments,
+                    columns: const [
+                      ('gender', '성별'),
+                      ('name', '이름'),
+                      ('phone_number', '휴대폰번호'),
+                      ('product_name', '상품명'),
+                      ('paid_at', '결제일'),
+                    ],
+                    formatCell: (key, row, fmt) {
+                      if (key == 'product_name') {
+                        return formatProductWithAmount(
+                          row['product_name']?.toString(),
+                          row['amount'],
+                          fmt,
+                        );
+                      }
+                      return '${row[key] ?? '-'}';
+                    },
                   ),
                 ],
               ),
@@ -275,7 +294,11 @@ class _LegendDot extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 6),
         Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
       ],
@@ -303,10 +326,10 @@ class _TopTable extends ConsumerWidget {
     final fmt = NumberFormat('#,###');
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -315,40 +338,86 @@ class _TopTable extends ConsumerWidget {
             children: [
               Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const Spacer(),
-              TextButton(
+              OutlinedButton(
                 onPressed: () => adminNavigate(ref, screenLink),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                ),
                 child: const Text('더보기'),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Table(
-            columnWidths: {for (var i = 0; i < columns.length; i++) i: const FlexColumnWidth()},
-            children: [
-              TableRow(
-                decoration: const BoxDecoration(color: AppColors.tableHeader),
-                children: columns
-                    .map((c) => Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Text(c.$2, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        ))
-                    .toList(),
-              ),
-              ...rows.map(
-                (row) => TableRow(
-                  children: columns
-                      .map((c) => Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(
-                              formatCell?.call(c.$1, row, fmt) ?? '${row[c.$1] ?? '-'}',
-                            ),
-                          ))
-                      .toList(),
+          if (rows.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Text(
+                  '내역이 없습니다.',
+                  style: TextStyle(color: AppColors.textSecondary),
                 ),
               ),
-            ],
-          ),
+            )
+          else
+            Table(
+              border: TableBorder.all(color: AppColors.border, width: 0.5),
+              columnWidths: {
+                for (var i = 0; i < columns.length; i++) i: const FlexColumnWidth(),
+              },
+              children: [
+                TableRow(
+                  decoration: const BoxDecoration(color: AppColors.inputBg),
+                  children: columns
+                      .map(
+                        (c) => Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          child: Text(
+                            c.$2,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                ...rows.map(
+                  (row) => TableRow(
+                    children: columns.map((c) {
+                      final text = formatCell?.call(c.$1, row, fmt) ?? '${row[c.$1] ?? '-'}';
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: c.$1 == 'gender'
+                            ? _GenderText(value: text)
+                            : Text(text, style: const TextStyle(fontSize: 14)),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _GenderText extends StatelessWidget {
+  const _GenderText({required this.value});
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    Color? color;
+    if (value.contains('남')) color = AppColors.male;
+    if (value.contains('여')) color = AppColors.female;
+    return Text(
+      value,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: color ?? AppColors.text,
       ),
     );
   }

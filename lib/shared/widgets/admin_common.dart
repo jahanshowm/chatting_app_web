@@ -2,6 +2,121 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 
+/// Figma CMS/PG/NTC 리스트 영역 테두리
+class AdminListPanel extends StatelessWidget {
+  const AdminListPanel({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.white,
+      ),
+      padding: const EdgeInsets.all(20),
+      child: child,
+    );
+  }
+}
+
+class GenderCellText extends StatelessWidget {
+  const GenderCellText(this.value, {super.key});
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    Color? color;
+    if (value.contains('남')) color = AppColors.male;
+    if (value.contains('여')) color = AppColors.female;
+    return Text(
+      value,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: color ?? AppColors.text,
+      ),
+    );
+  }
+}
+
+/// Figma 하단 [선택 삭제]
+class SelectDeleteButton extends StatelessWidget {
+  const SelectDeleteButton({
+    super.key,
+    required this.selectedCount,
+    required this.onDelete,
+  });
+
+  final int selectedCount;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: selectedCount > 0 ? onDelete : null,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.textSecondary,
+        side: const BorderSide(color: AppColors.border),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      ),
+      child: const Text('선택 삭제'),
+    );
+  }
+}
+
+/// Figma CMS-02 활동내역 탭 (칩 형태)
+class AdminChipTabBar extends StatelessWidget {
+  const AdminChipTabBar({
+    super.key,
+    required this.tabs,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<(String, String)> tabs;
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        for (final tab in tabs) ...[
+          Material(
+            color: selected == tab.$1 ? AppColors.periodSelected : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
+                color: selected == tab.$1 ? AppColors.periodSelected : AppColors.border,
+              ),
+            ),
+            child: InkWell(
+              onTap: () => onSelected(tab.$1),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                child: Text(
+                  tab.$2,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: selected == tab.$1 ? Colors.white : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+        ],
+      ],
+    );
+  }
+}
+
 class SearchFilterBar extends StatelessWidget {
   const SearchFilterBar({
     super.key,
@@ -382,7 +497,7 @@ String formatProductWithAmount(String? productName, dynamic amount, NumberFormat
   return product;
 }
 
-/// 엑셀: 선택 0개일 때도 버튼 노출, 비활성화
+/// 회원 목록 등 — Figma [삭제] (상단)
 class DeleteActionButton extends StatelessWidget {
   const DeleteActionButton({
     super.key,
@@ -397,6 +512,10 @@ class DeleteActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed: selectedCount > 0 ? onDelete : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.periodSelected,
+        foregroundColor: Colors.white,
+      ),
       child: const Text('삭제'),
     );
   }

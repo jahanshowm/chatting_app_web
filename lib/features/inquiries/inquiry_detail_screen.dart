@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/shared/utils/admin_date_format.dart';
 import 'package:randomchat_admin/core/providers/auth_provider.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
@@ -50,13 +51,6 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
     } catch (_) {
       return '$raw';
     }
-  }
-
-  String _statusDisplay(Map<String, dynamic> inquiry) {
-    final raw = inquiry['status']?.toString();
-    final label = inquiry['status_label']?.toString() ?? '-';
-    if (raw == 'closed' || label == '완료') return '답변완료';
-    return label;
   }
 
   Future<void> _load() async {
@@ -147,24 +141,23 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
   }
 
   Widget _messageBubble({
-    required bool isAdmin,
     required String? content,
     required String? imageUrl,
   }) {
     return Column(
-      crossAxisAlignment: isAdmin ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (content != null && content.isNotEmpty)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isAdmin ? AppColors.primary : Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.chatBubble,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               content,
-              style: TextStyle(color: isAdmin ? Colors.white : AppColors.text),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
           ),
         if (imageUrl != null && imageUrl.isNotEmpty) ...[
@@ -182,40 +175,22 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
-    final inquiry = _thread?.inquiry ?? {};
-
     return AdminContentArea(
+      screenId: inquiryDetailSpec.id,
+      subtitle: inquiryDetailSpec.subtitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AdminDetailBackBar(backPath: widget.listPath),
           MemberInfoHeader(data: _thread?.member ?? {}, photos: _photos),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  '${inquiry['title'] ?? '-'}',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-                const Spacer(),
-                Text(_statusDisplay(inquiry)),
-              ],
-            ),
-          ),
           const SizedBox(height: 16),
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.inputBg.withValues(alpha: 0.35),
+                color: Colors.white,
                 border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: ListView.builder(
                 itemCount: _thread?.messages.length ?? 0,
@@ -226,92 +201,115 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
                   final imageUrl = msg['image_url'] as String?;
                   final content = msg['content'] as String?;
                   final timeLabel = _formatTime(msg['created_at']);
+                  DateTime? createdAt;
+                  try {
+                    createdAt = DateTime.parse('${msg['created_at']}').toLocal();
+                  } catch (_) {}
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment:
-                          isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
-                      children: [
-                        if (!isAdmin) ...[
-                          _memberAvatar(memberName),
-                          const SizedBox(width: 8),
-                        ],
-                        Flexible(
+                  var showDateDivider = false;
+                  if (createdAt != null) {
+                    if (index == 0) {
+                      showDateDivider = true;
+                    } else {
+                      try {
+                        final prev = DateTime.parse(
+                          '${_thread!.messages[index - 1]['created_at']}',
+                        ).toLocal();
+                        showDateDivider = !isSameCalendarDay(createdAt, prev);
+                      } catch (_) {
+                        showDateDivider = true;
+                      }
+                    }
+                  }
+
+                  return Column(
+                    children: [
+                      if (showDateDivider)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Row(
-                            mainAxisAlignment:
-                                isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              if (isAdmin && timeLabel.isNotEmpty) ...[
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8, bottom: 4),
-                                  child: Text(
-                                    timeLabel,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary,
-                                    ),
+                              const Expanded(child: Divider()),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  formatKoreanDateDivider(createdAt!),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
                                   ),
-                                ),
-                              ],
-                              Flexible(
-                                child: _messageBubble(
-                                  isAdmin: isAdmin,
-                                  content: content,
-                                  imageUrl: imageUrl,
                                 ),
                               ),
-                              if (!isAdmin && timeLabel.isNotEmpty) ...[
-                                const SizedBox(width: 8),
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Text(
-                                    timeLabel,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              const Expanded(child: Divider()),
                             ],
                           ),
                         ),
-                        if (isAdmin) ...[
-                          const SizedBox(width: 8),
-                          _adminAvatar(),
-                        ],
-                      ],
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment:
+                              isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
+                          children: [
+                            if (!isAdmin) ...[
+                              _memberAvatar(memberName),
+                              const SizedBox(width: 8),
+                            ],
+                            Flexible(
+                              child: Row(
+                                mainAxisAlignment:
+                                    isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (isAdmin && timeLabel.isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8, bottom: 4),
+                                      child: Text(
+                                        timeLabel,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  Flexible(
+                                    child: _messageBubble(
+                                      content: content,
+                                      imageUrl: imageUrl,
+                                    ),
+                                  ),
+                                  if (!isAdmin && timeLabel.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Text(
+                                        timeLabel,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            if (isAdmin) ...[
+                              const SizedBox(width: 8),
+                              _adminAvatar(),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              for (final s in const [
-                ('waiting', '대기중'),
-                ('in_progress', '진행중'),
-                ('closed', '답변완료'),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      await ref.read(adminApiProvider).updateInquiryStatus(widget.inquiryId, s.$1);
-                      await _load();
-                    },
-                    child: Text(s.$2),
-                  ),
-                ),
-            ],
-          ),
           if (_pendingImage != null) ...[
-            const SizedBox(height: 8),
             Row(
               children: [
                 Text('첨부: ${_pendingImage!.name}', style: const TextStyle(fontSize: 12)),
@@ -321,22 +319,65 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
           ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.chatBubble,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: _pickImage,
+                  icon: const Icon(Icons.image_outlined, color: AppColors.textSecondary),
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _message,
+                    decoration: const InputDecoration(
+                      hintText: '메시지를 입력해주세요',
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _send(),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _sending ? null : _send,
+                  icon: Icon(
+                    Icons.send,
+                    color: _sending ? AppColors.textSecondary : AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
-              IconButton(onPressed: _pickImage, icon: const Icon(Icons.image_outlined)),
-              Expanded(
-                child: TextField(
-                  controller: _message,
-                  decoration: const InputDecoration(hintText: '답변을 입력하세요'),
-                  onSubmitted: (_) => _send(),
+              for (final s in const [
+                ('waiting', '대기중', AppColors.statusWaiting),
+                ('in_progress', '진행중', AppColors.statusInProgress),
+                ('closed', '답변완료', AppColors.statusCompleted),
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: s.$3,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () async {
+                      await ref.read(adminApiProvider).updateInquiryStatus(widget.inquiryId, s.$1);
+                      await _load();
+                    },
+                    child: Text(s.$2),
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: _sending ? null : _send,
-                icon: Icon(Icons.send, color: _sending ? AppColors.textSecondary : AppColors.primary),
-              ),
             ],
           ),
         ],
