@@ -4,6 +4,8 @@ import 'app_colors.dart';
 
 class AppTheme {
   static ThemeData light() {
+    final fontFamily = GoogleFonts.notoSansKr().fontFamily;
+
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
@@ -16,6 +18,7 @@ class AppTheme {
 
     return base.copyWith(
       textTheme: GoogleFonts.notoSansKrTextTheme(base.textTheme),
+      primaryTextTheme: GoogleFonts.notoSansKrTextTheme(base.primaryTextTheme),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.inputBg,
@@ -24,7 +27,10 @@ class AppTheme {
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        hintStyle: const TextStyle(color: AppColors.textSecondary),
+        hintStyle: TextStyle(
+          color: AppColors.textSecondary,
+          fontFamily: fontFamily,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -32,7 +38,11 @@ class AppTheme {
           foregroundColor: Colors.white,
           minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          textStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            fontFamily: fontFamily,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(

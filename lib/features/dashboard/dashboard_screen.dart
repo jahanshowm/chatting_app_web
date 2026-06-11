@@ -164,22 +164,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     lineTouchData: LineTouchData(
                                       touchTooltipData: LineTouchTooltipData(
                                         getTooltipItems: (spots) {
-                                          return spots.map((spot) {
-                                            final i = spot.x.toInt();
-                                            if (i < 0 || i >= _visitors.length) {
-                                              return null;
-                                            }
-                                            final point = _visitors[i];
-                                            final male = point.male.toString().padLeft(2, '0');
-                                            final female = point.female.toString().padLeft(2, '0');
-                                            return LineTooltipItem(
+                                          // 남성·여성 2개 라인 → spot이 2개 오므로 첫 줄만 표시
+                                          if (spots.isEmpty) return [];
+                                          final spot = spots.first;
+                                          final i = spot.x.toInt();
+                                          if (i < 0 || i >= _visitors.length) {
+                                            return [];
+                                          }
+                                          final point = _visitors[i];
+                                          final male =
+                                              point.male.toString().padLeft(2, '0');
+                                          final female =
+                                              point.female.toString().padLeft(2, '0');
+                                          return [
+                                            LineTooltipItem(
                                               '${point.label}, 남성 : $male명, 여성 : $female명',
                                               const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 12,
                                               ),
-                                            );
-                                          }).toList();
+                                            ),
+                                          ];
                                         },
                                       ),
                                     ),
