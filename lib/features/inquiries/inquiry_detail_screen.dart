@@ -10,6 +10,7 @@ import 'package:randomchat_admin/data/models/admin_models.dart';
 import 'package:randomchat_admin/shared/widgets/admin_detail_back_bar.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/member_info_header.dart';
+import 'package:randomchat_admin/shared/utils/resolve_admin_media_url.dart';
 
 class InquiryDetailScreen extends ConsumerStatefulWidget {
   const InquiryDetailScreen({
@@ -111,7 +112,7 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
       return CircleAvatar(
         radius: 18,
         backgroundColor: AppColors.border,
-        backgroundImage: NetworkImage(photos.first),
+        backgroundImage: NetworkImage(resolveAdminMediaUrl(photos.first)),
       );
     }
     return CircleAvatar(
@@ -164,7 +165,11 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
           if (content != null && content.isNotEmpty) const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(imageUrl, width: 200, fit: BoxFit.cover),
+            child: Image.network(
+              resolveAdminMediaUrl(imageUrl),
+              width: 200,
+              fit: BoxFit.cover,
+            ),
           ),
         ],
       ],
