@@ -1,0 +1,63 @@
+---
+description: 운영 서버 인프라(Apache/SSL) 경계 — 개발 vs 서버 담당, 2026-07-03 사례
+alwaysApply: true
+---
+
+# 운영 서버 인프라 경계 (개발 ≠ 서버)
+
+## 배경 (2026-07-03)
+
+채팅 **운영 서버**(`3.35.204.151`, Bitnami LAMP)에서 개발 측이 **보고·서버 담당 협의 없이** Apache vhost·SSL 설정을 직접 수정해 지적받음.
+
+**운영 URL 3개** (동일/연관 서버 — DNS·vhost·SSL 각각 서버 담당 관리):
+
+| URL | 용도 | API 포트(참고) |
+|-----|------|----------------|
+| `randomchat.kr` | 앱 운영 API + 어드민 Web(`/var/www/randomchat`) | `:3000` |
+| `adminchat.kr` | 어드민 CMS(`/var/www/adminchat`) | `:3001` |
+| `chat-test.inp.kr` | QA API | `:3001` |
+
+## 업무 구분
+
+| 개발(정 주임 등) | 서버 담당 |
+|------------------|-----------|
+| 백엔드·Web **코드**, `.env`, PM2 **앱 배포** | **Apache conf**, **SSL conf**, **certbot**, DNS |
+| Flutter/Nest **빌드**, `deploy/*.sh` **레포 유지** | vhost·ProxyPass·인증서 **적용·갱신** |
+| 장애 **증상·로그 정리 → 요청서** | 인프라 **수정·원복** |
+
+SSL 발급 = HTTPS 인증서 생성/갱신. certbot = Let's Encrypt 발급 CLI. **개발자가 운영에서 직접 실행 금지.**
+
+## 에이전트 필수 행동
+
+요청 처리 중 아래가 **필요해 보이면 SSH·서버에서 직접 수정하지 말 것**. 먼저 사용자에게 알림:
+
+> Apache/SSL/DNS/certbot 등 **서버 인프라** 변경이 필요합니다.  
+> **서버 담당에게 요청**해야 합니다. 제가 운영 서버 설정을 직접 건드리지 않겠습니다.
+
+### 에이전트가 하지 말 것 (서버 담당 요청만)
+
+- `bitnami-le-ssl.conf`, `*vhost*.conf`, nginx site conf **서버에 scp/편집**
+- `certbot` 실행, SSL 인증서 발급·교체
+- DNS A/CNAME 변경
+- Apache/nginx **reload/restart** (운영 `3.35.204.151` 등)
+- `deploy-admin.sh` 등으로 **Apache/SSL을 사용자 몰래** 원격 적용
+
+### 에이전트가 할 수 있는 것
+
+- 어드민 **코드·deploy 스크립트(레포)** 수정
+- `deploy/apache/*.conf` **템플릿** 작성 (서버 적용은 서버 담당)
+- **요청서 초안**: 증상, 필요 ProxyPass/DocumentRoot, curl 확인
+- 로컬 `flutter build web`, `.env.production` 빌드용 설정
+- 서버 담당 승인 후 실행할 명령 **제안만**
+
+## 서버 담당 요청서 템플릿
+
+```
+[서버 요청] randomchat.kr / adminchat.kr / chat-test.inp.kr
+증상:
+필요 작업: (예: adminchat.kr SSL vhost, ProxyPass :3001)
+영향 URL:
+개발 측 완료: (Web 빌드 → /var/www/adminchat rsync 대기)
+```
+
+교차 참조: `admin-deploy.mdc`(전체 배포는 **서버 인프라 제외** 또는 서버 담당 동행), `deploy/apache/`.

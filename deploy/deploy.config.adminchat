@@ -1,5 +1,5 @@
-# 관리자 CMS — adminchat.kr (Bitnami 3.35.204.151)
-# deploy-adminchat.sh / deploy-all.sh 가 참조
+# adminchat.kr — Bitnami 서버 (3.35.204.151, randomchat.kr 와 동일 호스트)
+# deploy-all.sh / deploy-admin.sh 가 참조
 
 DEPLOY_SSH=root@3.35.204.151
 DEPLOY_DOMAIN=adminchat.kr
@@ -9,9 +9,10 @@ API_BASE_URL=https://adminchat.kr
 REMOTE_BACKEND_DIR=/home/users/chat-test/www
 BACKEND_PORT=3001
 
-# Apache (Bitnami LAMP) — nginx 레거시(13.209.176.251)는 deploy.config.legacy-nginx 참고
-DEPLOY_WEB_SERVER=apache
+ENV_PRODUCTION_FILE="$ROOT/.env.production"
+NGINX_CONF="$ROOT/deploy/nginx/adminchat.kr.conf"
 APACHE_CONF="$ROOT/deploy/apache/adminchat.kr.conf"
 APACHE_BITNAMI_SSL_CONF="$ROOT/deploy/apache/adminchat.kr-ssl.conf"
 APACHE_VHOST_PATH=/opt/bitnami/apache/conf/vhosts/adminchat.kr-vhost.conf
-APACHE_SSL_VHOST_PATH=/opt/bitnami/apache/conf/vhosts/adminchat.kr-ssl-vhost.conf
+APACHE_BITNAMI_SSL_PATH=/opt/bitnami/apache/conf/vhosts/adminchat.kr-ssl-vhost.conf
+DEPLOY_WEB_SERVER=apache

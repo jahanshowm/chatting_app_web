@@ -12,8 +12,9 @@ BACKEND_PORT=3000
 ENV_PRODUCTION_FILE="$ROOT/.env.production.randomchat"
 NGINX_CONF="$ROOT/deploy/nginx/randomchat.kr.conf"
 APACHE_CONF="$ROOT/deploy/apache/randomchat.kr.conf"
-APACHE_SSL_CONF="$ROOT/deploy/apache/randomchat.kr-ssl.conf"
+APACHE_BITNAMI_SSL_CONF="$ROOT/deploy/apache/bitnami-le-ssl.conf"
 APACHE_VHOST_PATH=/opt/bitnami/apache/conf/vhosts/randomchat.kr-vhost.conf
-APACHE_SSL_VHOST_PATH=/opt/bitnami/apache/conf/vhosts/randomchat.kr-ssl-vhost.conf
+APACHE_BITNAMI_SSL_PATH=/opt/bitnami/apache/conf/bitnami/bitnami-le-ssl.conf
+APACHE_BITNAMI_MAIN_PATH=/opt/bitnami/apache/conf/bitnami/bitnami.conf
 # Bitnami LAMP — nginx 대신 Apache
 DEPLOY_WEB_SERVER=apache
