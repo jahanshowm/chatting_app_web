@@ -22,7 +22,7 @@ dependencies:
   shared_preferences: ^2.5.3
   file_picker: ^10.3.3
   data_table_2: ^2.6.0
-  flutter_quill: ^11.4.1
+  flutter_quill: ^11.5.1
   vsc_quill_delta_to_html: ^1.0.5
   flutter_svg: ^2.0.17
 
