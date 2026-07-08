@@ -217,7 +217,9 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                         rows: items.map((row) {
                           final id = row['id'] as String;
                           return DataRow2(
-                            onTap: () => _openDetail(id),
+                            onTap: _tab == 'withdrawn'
+                                ? null
+                                : () => _openDetail(id),
                             selected: _selected.contains(id),
                             cells: [
                               DataCell(Checkbox(

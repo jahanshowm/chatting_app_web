@@ -24,6 +24,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
   Set<String> _statusFilter = {'all'};
   int _page = 1;
   PaginatedResult<Map<String, dynamic>>? _data;
+  final Set<String> _selected = {};
   bool _loading = true;
 
   AdminScreenSpec get _spec => widget.withdrawn ? inquiryWithdrawnSpec : inquiryActiveSpec;
@@ -69,6 +70,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       if (!mounted) return;
       setState(() {
         _data = data;
+        _selected.clear();
         _loading = false;
       });
     } catch (e) {
@@ -84,6 +86,18 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       ref,
       '/inquiries/$id?from=${Uri.encodeComponent(from)}',
     );
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_selected.isEmpty) return;
+    final ok = await showConfirmDialog(
+      context,
+      title: '삭제 확인',
+      message: '선택한 ${_selected.length}개의 항목을 삭제하시겠습니까?',
+    );
+    if (ok != true) return;
+    await ref.read(adminApiProvider).deleteInquiries(_selected.toList());
+    _load();
   }
 
   void _resetSearch() {
@@ -143,6 +157,12 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
           ),
         ],
       ),
+      summary: Row(
+        children: [
+          const Spacer(),
+          SelectDeleteButton(selectedCount: _selected.length, onDelete: _deleteSelected),
+        ],
+      ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : AdminListPanel(
@@ -158,18 +178,45 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
                         columnSpacing: 12,
                         minWidth: 960,
                         headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
-                        columns: const [
-                          DataColumn2(label: Text('성별')),
-                          DataColumn2(label: Text('이름')),
-                          DataColumn2(label: Text('문의제목')),
-                          DataColumn2(label: Text('일자')),
-                          DataColumn2(label: Text('처리상태')),
+                        columns: [
+                          DataColumn2(
+                            label: Checkbox(
+                              value: _selected.length == items.length && items.isNotEmpty,
+                              onChanged: (v) {
+                                setState(() {
+                                  if (v == true) {
+                                    _selected.addAll(items.map((e) => e['id'] as String));
+                                  } else {
+                                    _selected.clear();
+                                  }
+                                });
+                              },
+                            ),
+                            size: ColumnSize.S,
+                          ),
+                          const DataColumn2(label: Text('성별')),
+                          const DataColumn2(label: Text('이름')),
+                          const DataColumn2(label: Text('문의제목')),
+                          const DataColumn2(label: Text('일자')),
+                          const DataColumn2(label: Text('처리상태')),
                         ],
                         rows: items.map((row) {
                           final id = row['id'] as String;
                           return DataRow2(
                             onTap: () => _openDetail(id),
                             cells: [
+                              DataCell(Checkbox(
+                                value: _selected.contains(id),
+                                onChanged: (v) {
+                                  setState(() {
+                                    if (v == true) {
+                                      _selected.add(id);
+                                    } else {
+                                      _selected.remove(id);
+                                    }
+                                  });
+                                },
+                              )),
                               DataCell(GenderCellText('${row['gender'] ?? '-'}')),
                               DataCell(Text('${row['name'] ?? '-'}')),
                               DataCell(Text('${row['title'] ?? '-'}')),

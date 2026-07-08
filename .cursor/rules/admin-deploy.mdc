@@ -15,7 +15,7 @@ alwaysApply: true
 | 서버 SSH | `ubuntu@13.209.176.251` |
 | Admin Web 경로 | `/var/www/adminchat` |
 | Backend 경로 | `/opt/randomchat_back` |
-| API URL | `https://adminchat.kr` (nginx `/api` 프록시) |
+| API URL | `https://adminchat.kr` (Apache `/api` 프록시 — 서버 담당) |
 | Backend PORT | `3001` |
 
 설정 파일: `randomchat_admin/deploy/deploy.config`
@@ -44,7 +44,7 @@ cd /Users/wogks/Desktop/showm/randomchat_project/randomchat_back
 
 1. **커밋/푸시는 사용자가 요청할 때만** — 배포만 수행
 2. 배포 전 `deploy/deploy.config` SSH·도메인 확인
-3. Admin Web 빌드 시 `.env.production` → `.env` 복사 (스크립트가 처리)
+3. Admin Web 빌드 시 `.env.build.*` → `.env` 복사 (스크립트가 처리)
 4. SSH 실패 시: 22번 포트·보안그룹·키 확인 안내, 스크립트·설정은 그대로 유지
 5. Backend 배포 시 서버 `.env`의 `API_BASE_URL=https://adminchat.kr`, `PORT=3001`, `DB_SYNC=false` 필요
 6. 배포 완료 후 URL 보고: `https://adminchat.kr`
@@ -52,10 +52,8 @@ cd /Users/wogks/Desktop/showm/randomchat_project/randomchat_back
 ## 관련 파일
 
 - `randomchat_admin/deploy/deploy-all.sh` — 원클릭 전체 배포
-- `randomchat_admin/deploy/deploy-admin.sh` — Flutter Web
 - `randomchat_back/deploy/deploy-backend.sh` — NestJS + migration
-- `randomchat_admin/deploy/nginx/adminchat.kr.conf` — nginx
-- `randomchat_admin/.env.production` — `API_BASE_URL=https://adminchat.kr`
+- `randomchat_admin/.env.build.adminchat` — `API_BASE_URL=https://adminchat.kr`
 
 ## 프로젝트 경로
 

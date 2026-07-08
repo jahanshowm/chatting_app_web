@@ -1,5 +1,5 @@
-# randomchat.kr 운영 — Admin Web + API
-# deploy-all-randomchat.sh / deploy-admin-randomchat.sh 가 참조
+# randomchat.kr 운영 — deploy-all-randomchat.sh
+# deploy-admin.sh + deploy.config.randomchat
 
 DEPLOY_SSH=root@3.35.204.151
 DEPLOY_DOMAIN=randomchat.kr
@@ -9,12 +9,4 @@ API_BASE_URL=https://randomchat.kr
 REMOTE_BACKEND_DIR=/home/users/randomchat/www
 BACKEND_PORT=3000
 
-ENV_PRODUCTION_FILE="$ROOT/.env.production.randomchat"
-NGINX_CONF="$ROOT/deploy/nginx/randomchat.kr.conf"
-APACHE_CONF="$ROOT/deploy/apache/randomchat.kr.conf"
-APACHE_BITNAMI_SSL_CONF="$ROOT/deploy/apache/bitnami-le-ssl.conf"
-APACHE_VHOST_PATH=/opt/bitnami/apache/conf/vhosts/randomchat.kr-vhost.conf
-APACHE_BITNAMI_SSL_PATH=/opt/bitnami/apache/conf/bitnami/bitnami-le-ssl.conf
-APACHE_BITNAMI_MAIN_PATH=/opt/bitnami/apache/conf/bitnami/bitnami.conf
-# Bitnami LAMP — nginx 대신 Apache
-DEPLOY_WEB_SERVER=apache
+ENV_BUILD_FILE="$ROOT/.env.build.randomchat"

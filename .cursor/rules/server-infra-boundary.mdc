@@ -40,14 +40,13 @@ SSL 발급 = HTTPS 인증서 생성/갱신. certbot = Let's Encrypt 발급 CLI. 
 - `certbot` 실행, SSL 인증서 발급·교체
 - DNS A/CNAME 변경
 - Apache/nginx **reload/restart** (운영 `3.35.204.151` 등)
-- `deploy-admin.sh` 등으로 **Apache/SSL을 사용자 몰래** 원격 적용
+- `deploy-admin.sh` 등으로 **Apache/SSL을 원격 적용** (스크립트에서 제거됨 — 재추가 금지)
 
 ### 에이전트가 할 수 있는 것
 
-- 어드민 **코드·deploy 스크립트(레포)** 수정
-- `deploy/apache/*.conf` **템플릿** 작성 (서버 적용은 서버 담당)
+- 어드민 **코드·deploy 스크립트(레포)** 수정 (Web rsync만)
 - **요청서 초안**: 증상, 필요 ProxyPass/DocumentRoot, curl 확인
-- 로컬 `flutter build web`, `.env.production` 빌드용 설정
+- 로컬 `flutter build web`, `.env.build.*` 빌드용 설정
 - 서버 담당 승인 후 실행할 명령 **제안만**
 
 ## 서버 담당 요청서 템플릿
@@ -60,4 +59,4 @@ SSL 발급 = HTTPS 인증서 생성/갱신. certbot = Let's Encrypt 발급 CLI. 
 개발 측 완료: (Web 빌드 → /var/www/adminchat rsync 대기)
 ```
 
-교차 참조: `admin-deploy.mdc`(전체 배포는 **서버 인프라 제외** 또는 서버 담당 동행), `deploy/apache/`.
+교차 참조: `admin-deploy.mdc`(Web 배포는 rsync만, Apache/SSL은 서버 담당).

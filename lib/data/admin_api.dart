@@ -187,8 +187,21 @@ class AdminApi {
 
   Future<Map<String, dynamic>> popupDetail(String id) => _client.getData('/admin/popups/$id');
 
-  Future<List<Map<String, dynamic>>> popups() =>
-      _client.getListData('/admin/popups', fromJson: (j) => j);
+  Future<PaginatedResult<Map<String, dynamic>>> popups({
+    int page = 1,
+    String? filter,
+    String? keyword,
+  }) {
+    return _client.getData(
+      '/admin/popups',
+      queryParameters: {
+        'page': page,
+        if (filter != null && filter != 'all') 'filter': filter,
+        if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
+      },
+      fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),
+    );
+  }
 
   Future<Map<String, dynamic>> createPopup(FormData formData) =>
       _client.postFormData('/admin/popups', formData: formData);
@@ -227,6 +240,12 @@ class AdminApi {
 
   Future<Map<String, dynamic>> testFcm(Map<String, dynamic> body) =>
       _client.postData('/admin/fcm/test', data: body);
+
+  Future<void> deleteFcmCampaigns(List<String> ids) =>
+      _client.deleteData('/admin/fcm', data: {'ids': ids});
+
+  Future<void> deleteInquiries(List<String> ids) =>
+      _client.deleteData('/admin/inquiries', data: {'ids': ids});
 }
 
 final adminApiProvider = Provider<AdminApi>((ref) => AdminApi(ref.watch(apiClientProvider)));

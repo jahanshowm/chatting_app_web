@@ -171,13 +171,32 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                                 .toList(),
                             rows: activityItems.map((row) {
                               final inquiryId = row['id']?.toString();
+                              final targetUserId =
+                                  row['target_user_id']?.toString();
+                              VoidCallback? onTap;
+                              if (_activityTab == 'inquiry' &&
+                                  inquiryId != null &&
+                                  inquiryId.isNotEmpty) {
+                                onTap = () => adminNavigateReplace(
+                                      ref,
+                                      '/inquiries/$inquiryId?from=${Uri.encodeComponent(widget.listPath)}',
+                                    );
+                              } else if (_activityTab == 'payment') {
+                                onTap = () => adminNavigateReplace(
+                                      ref,
+                                      '/payments?user_id=${Uri.encodeComponent(widget.userId)}',
+                                    );
+                              } else if ((_activityTab == 'report' ||
+                                      _activityTab == 'block') &&
+                                  targetUserId != null &&
+                                  targetUserId.isNotEmpty) {
+                                onTap = () => adminNavigateReplace(
+                                      ref,
+                                      '/members/$targetUserId?from=${Uri.encodeComponent(widget.listPath)}',
+                                    );
+                              }
                               return DataRow2(
-                                onTap: _activityTab == 'inquiry' && inquiryId != null
-                                    ? () => adminNavigateReplace(
-                                          ref,
-                                          '/inquiries/$inquiryId?from=${Uri.encodeComponent(widget.listPath)}',
-                                        )
-                                    : null,
+                                onTap: onTap,
                                 cells: _activityColumns.map((c) {
                                   if (c.$1 == 'gender') {
                                     return DataCell(GenderCellText('${row[c.$1] ?? '-'}'));

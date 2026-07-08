@@ -9,6 +9,7 @@ import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
+import 'package:randomchat_admin/data/models/admin_models.dart';
 import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_detail_back_bar.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
@@ -35,9 +36,12 @@ class PopupListScreen extends ConsumerStatefulWidget {
 }
 
 class _PopupListScreenState extends ConsumerState<PopupListScreen> {
-  List<Map<String, dynamic>> _items = [];
+  PaginatedResult<Map<String, dynamic>>? _data;
   final Set<String> _selected = {};
   bool _loading = true;
+  int _page = 1;
+  String _filter = 'all';
+  final _keyword = TextEditingController();
 
   @override
   void initState() {
@@ -45,13 +49,23 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _keyword.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final items = await ref.read(adminApiProvider).popups();
+      final data = await ref.read(adminApiProvider).popups(
+            page: _page,
+            filter: _filter,
+            keyword: _keyword.text.trim(),
+          );
       if (!mounted) return;
       setState(() {
-        _items = items;
+        _data = data;
         _selected.clear();
         _loading = false;
       });
@@ -60,6 +74,15 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  void _resetSearch() {
+    setState(() {
+      _filter = 'all';
+      _page = 1;
+      _keyword.clear();
+    });
+    _load();
   }
 
   Future<void> _deleteSelected() async {
@@ -76,19 +99,43 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final items = _data?.items ?? [];
+    final totalCount = _data?.total ?? items.length;
+    final totalPages = _data?.totalPages ?? 1;
+
     return AdminContentArea(
       screenId: popupListSpec.id,
       subtitle: popupListSpec.subtitle,
-      toolbar: Align(
-        alignment: Alignment.centerLeft,
-        child: ElevatedButton(
-          onPressed: () => adminNavigateReplace(ref, '/operations/popups/new'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.periodSelected,
-            foregroundColor: Colors.white,
+      toolbar: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              ElevatedButton(
+                onPressed: () => adminNavigateReplace(ref, '/operations/popups/new'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.periodSelected,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('등록'),
+              ),
+            ],
           ),
-          child: const Text('등록'),
-        ),
+          const SizedBox(height: 16),
+          SearchFilterBar(
+            filter: _filter,
+            filters: popupListSpec.filters,
+            keywordController: _keyword,
+            hint: popupListSpec.searchHint,
+            useSearchIcon: true,
+            onFilterChanged: (v) => setState(() => _filter = v),
+            onSearch: () {
+              setState(() => _page = 1);
+              _load();
+            },
+            onReset: _resetSearch,
+          ),
+        ],
       ),
       summary: Row(
         children: [
@@ -99,90 +146,111 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : AdminListPanel(
-              child: _items.isEmpty
+              child: items.isEmpty
                   ? const SizedBox(
                       height: 240,
                       child: Center(
                         child: AdminEmptyList(message: '등록된 팝업이 없습니다.'),
                       ),
                     )
-                  : DataTable2(
-                  columnSpacing: 12,
-                  minWidth: 1100,
-                  headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
-                  columns: [
-                    DataColumn2(
-                      label: Checkbox(
-                        value: _selected.length == _items.length && _items.isNotEmpty,
-                        onChanged: (v) {
-                          setState(() {
-                            if (v == true) {
-                              _selected.addAll(_items.map((e) => e['id'] as String));
-                            } else {
-                              _selected.clear();
-                            }
-                          });
-                        },
-                      ),
-                      size: ColumnSize.S,
-                    ),
-                    const DataColumn2(label: Text('NO')),
-                    const DataColumn2(label: Text('이미지')),
-                    const DataColumn2(label: Text('제목')),
-                    const DataColumn2(label: Text('조회수')),
-                    const DataColumn2(label: Text('등록일')),
-                    const DataColumn2(label: Text('사용')),
-                    const DataColumn2(label: Text('관리')),
-                  ],
-                  rows: _items.map((row) {
-                    final id = row['id'] as String;
-                    final imageUrl = resolveAdminMediaUrl(row['image_url'] as String?);
-                    return DataRow(
-                      selected: _selected.contains(id),
-                      cells: [
-                        DataCell(Checkbox(
-                          value: _selected.contains(id),
-                          onChanged: (v) {
-                            setState(() {
-                              if (v == true) {
-                                _selected.add(id);
-                              } else {
-                                _selected.remove(id);
-                              }
-                            });
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: DataTable2(
+                            columnSpacing: 12,
+                            minWidth: 1100,
+                            headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
+                            columns: [
+                              DataColumn2(
+                                label: Checkbox(
+                                  value: _selected.length == items.length && items.isNotEmpty,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      if (v == true) {
+                                        _selected.addAll(items.map((e) => e['id'] as String));
+                                      } else {
+                                        _selected.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                                size: ColumnSize.S,
+                              ),
+                              const DataColumn2(label: Text('NO')),
+                              const DataColumn2(label: Text('이미지')),
+                              const DataColumn2(label: Text('제목')),
+                              const DataColumn2(label: Text('조회수')),
+                              const DataColumn2(label: Text('등록일')),
+                              const DataColumn2(label: Text('사용')),
+                              const DataColumn2(label: Text('관리')),
+                            ],
+                            rows: items.map((row) {
+                              final id = row['id'] as String;
+                              final imageUrl = resolveAdminMediaUrl(row['image_url'] as String?);
+                              return DataRow(
+                                selected: _selected.contains(id),
+                                cells: [
+                                  DataCell(Checkbox(
+                                    value: _selected.contains(id),
+                                    onChanged: (v) {
+                                      setState(() {
+                                        if (v == true) {
+                                          _selected.add(id);
+                                        } else {
+                                          _selected.remove(id);
+                                        }
+                                      });
+                                    },
+                                  )),
+                                  DataCell(Text('${row['no'] ?? '-'}')),
+                                  DataCell(
+                                    imageUrl.isNotEmpty
+                                        ? ClipRRect(
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: Image.network(
+                                              imageUrl,
+                                              width: 48,
+                                              height: 48,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        : const Text('-'),
+                                  ),
+                                  DataCell(Text('${row['title'] ?? '-'}')),
+                                  DataCell(Text('${row['view_count'] ?? 0}')),
+                                  DataCell(Text('${row['registered_at'] ?? '-'}')),
+                                  DataCell(
+                                    Switch(
+                                      value: row['is_active'] == true,
+                                      onChanged: (v) async {
+                                        await ref.read(adminApiProvider).togglePopup(id, v);
+                                        _load();
+                                      },
+                                    ),
+                                  ),
+                                  DataCell(
+                                    TextButton(
+                                      onPressed: () =>
+                                          adminNavigateReplace(ref, '/operations/popups/$id/edit'),
+                                      child: const Text('수정'),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        ListPageFooter(
+                          page: _page,
+                          totalPages: totalPages,
+                          totalCount: totalCount,
+                          onPageChanged: (p) {
+                            setState(() => _page = p);
+                            _load();
                           },
-                        )),
-                        DataCell(Text('${row['no'] ?? '-'}')),
-                        DataCell(
-                          imageUrl.isNotEmpty
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: Image.network(imageUrl, width: 48, height: 48, fit: BoxFit.cover),
-                                )
-                              : const Text('-'),
-                        ),
-                        DataCell(Text('${row['title'] ?? '-'}')),
-                        DataCell(Text('${row['view_count'] ?? 0}')),
-                        DataCell(Text('${row['registered_at'] ?? '-'}')),
-                        DataCell(
-                          Switch(
-                            value: row['is_active'] == true,
-                            onChanged: (v) async {
-                              await ref.read(adminApiProvider).togglePopup(id, v);
-                              _load();
-                            },
-                          ),
-                        ),
-                        DataCell(
-                          TextButton(
-                            onPressed: () => adminNavigateReplace(ref, '/operations/popups/$id/edit'),
-                            child: const Text('수정'),
-                          ),
                         ),
                       ],
-                    );
-                  }).toList(),
-                ),
+                    ),
             ),
     );
   }
@@ -367,6 +435,13 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
               controller: _link,
               decoration: const InputDecoration(hintText: '팝업 클릭 시 이동할 페이지 주소'),
             ),
+            _opsSectionTitle('사용 여부'),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('팝업 노출'),
+              value: _active,
+              onChanged: (v) => setState(() => _active = v),
+            ),
             const SizedBox(height: 32),
             Row(
               children: [
@@ -402,6 +477,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
   late DateTime _start = DateTime.now().subtract(const Duration(days: 30));
   late DateTime _end = DateTime.now();
   final _keyword = TextEditingController();
+  final Set<String> _selected = {};
 
   @override
   void initState() {
@@ -427,6 +503,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
       if (!mounted) return;
       setState(() {
         _data = data;
+        _selected.clear();
         _loading = false;
       });
     } catch (e) {
@@ -434,6 +511,18 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_selected.isEmpty) return;
+    final ok = await showConfirmDialog(
+      context,
+      title: '삭제 확인',
+      message: '선택한 ${_selected.length}개의 항목을 삭제하시겠습니까?',
+    );
+    if (ok != true) return;
+    await ref.read(adminApiProvider).deleteFcmCampaigns(_selected.toList());
+    _load();
   }
 
   void _resetSearch() {
@@ -517,12 +606,27 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                         columnSpacing: 12,
                         minWidth: 960,
                         headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
-                        columns: const [
-                          DataColumn2(label: Text('발송방법')),
-                          DataColumn2(label: Text('발송대상')),
-                          DataColumn2(label: Text('제목')),
-                          DataColumn2(label: Text('발송상태')),
-                          DataColumn2(label: Text('발송일')),
+                        columns: [
+                          DataColumn2(
+                            label: Checkbox(
+                              value: _selected.length == items.length && items.isNotEmpty,
+                              onChanged: (v) {
+                                setState(() {
+                                  if (v == true) {
+                                    _selected.addAll(items.map((e) => e['id'] as String));
+                                  } else {
+                                    _selected.clear();
+                                  }
+                                });
+                              },
+                            ),
+                            size: ColumnSize.S,
+                          ),
+                          const DataColumn2(label: Text('발송방법')),
+                          const DataColumn2(label: Text('발송대상')),
+                          const DataColumn2(label: Text('제목')),
+                          const DataColumn2(label: Text('발송상태')),
+                          const DataColumn2(label: Text('발송일')),
                         ],
                         rows: items.map((row) {
                           final id = row['id'] as String;
@@ -540,6 +644,18 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                           return DataRow2(
                             onTap: () => adminNavigateReplace(ref, '/operations/fcm/$id'),
                             cells: [
+                              DataCell(Checkbox(
+                                value: _selected.contains(id),
+                                onChanged: (v) {
+                                  setState(() {
+                                    if (v == true) {
+                                      _selected.add(id);
+                                    } else {
+                                      _selected.remove(id);
+                                    }
+                                  });
+                                },
+                              )),
                               DataCell(Text('${row['send_method'] ?? '-'}')),
                               DataCell(Text('${row['target_type'] ?? '-'}')),
                               DataCell(Text('${row['title'] ?? '-'}')),
@@ -550,6 +666,14 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                         }).toList(),
                       ),
                     ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SelectDeleteButton(
+                        selectedCount: _selected.length,
+                        onDelete: _deleteSelected,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     ListPageFooter(
                       page: _page,
                       totalPages: totalPages,

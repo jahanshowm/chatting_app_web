@@ -1,0 +1,13 @@
+# admin-dev.adminchat.kr — chat-test 개발 서버 (15.165.251.103)
+# deploy-admin-dev.sh 가 참조
+
+DEPLOY_SSH=root@chat-test.inp.kr
+DEPLOY_DOMAIN=admin-dev.adminchat.kr
+REMOTE_WEB_DIR=/home/users/admin-dev/www
+API_BASE_URL=https://admin-dev.adminchat.kr
+
+# 백엔드는 chat-test PM2 (:3001) — 웹 배포 스크립트는 API 배포하지 않음
+REMOTE_BACKEND_DIR=/home/users/chat-test/www
+BACKEND_PORT=3001
+
+ENV_BUILD_FILE="$ROOT/.env.build.admin-dev"

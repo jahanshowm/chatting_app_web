@@ -28,6 +28,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
   String _filter = 'all';
   int _page = 1;
   PaymentListResult? _data;
+  final Set<String> _selected = {};
   bool _loading = true;
 
   @override
@@ -66,6 +67,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
       if (!mounted) return;
       setState(() {
         _data = data;
+        _selected.clear();
         _loading = false;
       });
     } catch (e) {
@@ -93,12 +95,40 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
     adminNavigateReplace(ref, '/payments');
   }
 
+  void _openMemberDetail(Map<String, dynamic> row) {
+    final userId = row['user_id']?.toString();
+    if (userId == null || userId.isEmpty) return;
+    final from = widget.userId != null
+        ? '/payments?user_id=${Uri.encodeComponent(widget.userId!)}'
+        : '/payments';
+    adminNavigateReplace(
+      ref,
+      '/members/$userId?from=${Uri.encodeComponent(from)}',
+    );
+  }
+
+  int _selectedSum(List<Map<String, dynamic>> items) {
+    var sum = 0;
+    for (final row in items) {
+      final id = row['id']?.toString();
+      if (id == null || !_selected.contains(id)) continue;
+      final amount = row['amount'];
+      if (amount is int) {
+        sum += amount;
+      } else if (amount is num) {
+        sum += amount.toInt();
+      }
+    }
+    return sum;
+  }
+
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat('#,###');
     final items = _data?.page.items ?? [];
     final totalCount = _data?.page.total ?? items.length;
     final totalPages = _data?.page.totalPages ?? 1;
+    final selectedSum = _selectedSum(items);
 
     return AdminContentArea(
       screenId: paymentSpec.id,
@@ -109,7 +139,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
           if (widget.userId != null) ...[
             UserFilterBanner(
               userId: widget.userId!,
-              label: '탈퇴 회원 결제내역',
+              label: '회원 결제내역',
               onClear: _clearUserFilter,
             ),
             const SizedBox(height: 16),
@@ -161,9 +191,12 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
           ),
         ],
       ),
-      summary: Text(
-        '선택합계 ${fmt.format(_data?.selectedSum ?? 0)}원',
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+      summary: Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          '선택합계 ${fmt.format(selectedSum)}원',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -174,47 +207,82 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                       child: Center(child: AdminEmptyList()),
                     )
                   : Column(
-                  children: [
-                    Expanded(
-                      child: DataTable2(
-                        columnSpacing: 12,
-                        minWidth: 960,
-                        headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
-                        columns: const [
-                          DataColumn2(label: Text('성별')),
-                          DataColumn2(label: Text('이름')),
-                          DataColumn2(label: Text('휴대폰번호')),
-                          DataColumn2(label: Text('상품명')),
-                          DataColumn2(label: Text('결제일')),
-                        ],
-                        rows: items.map((row) {
-                          final productLabel = formatProductWithAmount(
-                            row['product_name']?.toString(),
-                            row['amount'],
-                            fmt,
-                          );
-                          return DataRow(cells: [
-                            DataCell(GenderCellText('${row['gender'] ?? '-'}')),
-                            DataCell(Text('${row['name'] ?? '-'}')),
-                            DataCell(Text('${row['phone_number'] ?? '-'}')),
-                            DataCell(Text(productLabel)),
-                            DataCell(Text('${row['paid_at'] ?? '-'}')),
-                          ]);
-                        }).toList(),
-                      ),
+                      children: [
+                        Expanded(
+                          child: DataTable2(
+                            columnSpacing: 12,
+                            minWidth: 960,
+                            headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
+                            columns: [
+                              DataColumn2(
+                                label: Checkbox(
+                                  value: _selected.length == items.length && items.isNotEmpty,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      if (v == true) {
+                                        _selected.addAll(
+                                          items.map((e) => e['id'] as String),
+                                        );
+                                      } else {
+                                        _selected.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                                size: ColumnSize.S,
+                              ),
+                              const DataColumn2(label: Text('성별')),
+                              const DataColumn2(label: Text('이름')),
+                              const DataColumn2(label: Text('휴대폰번호')),
+                              const DataColumn2(label: Text('상품명')),
+                              const DataColumn2(label: Text('결제일')),
+                            ],
+                            rows: items.map((row) {
+                              final id = row['id'] as String;
+                              final productLabel = formatProductWithAmount(
+                                row['product_name']?.toString(),
+                                row['amount'],
+                                fmt,
+                              );
+                              return DataRow2(
+                                onTap: () => _openMemberDetail(row),
+                                cells: [
+                                  DataCell(
+                                    Checkbox(
+                                      value: _selected.contains(id),
+                                      onChanged: (v) {
+                                        setState(() {
+                                          if (v == true) {
+                                            _selected.add(id);
+                                          } else {
+                                            _selected.remove(id);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  DataCell(GenderCellText('${row['gender'] ?? '-'}')),
+                                  DataCell(Text('${row['name'] ?? '-'}')),
+                                  DataCell(Text('${row['phone_number'] ?? '-'}')),
+                                  DataCell(Text(productLabel)),
+                                  DataCell(Text('${row['paid_at'] ?? '-'}')),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        ListPageFooter(
+                          page: _page,
+                          totalPages: totalPages,
+                          totalCount: totalCount,
+                          unit: '건',
+                          onPageChanged: (p) {
+                            setState(() => _page = p);
+                            _load();
+                          },
+                        ),
+                      ],
                     ),
-                    ListPageFooter(
-                      page: _page,
-                      totalPages: totalPages,
-                      totalCount: totalCount,
-                      unit: '건',
-                      onPageChanged: (p) {
-                        setState(() => _page = p);
-                        _load();
-                      },
-                    ),
-                  ],
-                ),
             ),
     );
   }

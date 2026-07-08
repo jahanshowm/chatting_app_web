@@ -187,68 +187,78 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : items.isEmpty
-              ? const AdminEmptyList()
-              : Column(
-                  children: [
-                    Expanded(
-                      child: DataTable2(
-                        columnSpacing: 12,
-                        horizontalMargin: 12,
-                        minWidth: 960,
-                        headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
-                        columns: [
-                          DataColumn2(
-                            label: Checkbox(
-                              value: _selected.length == items.length && items.isNotEmpty,
-                              onChanged: (v) {
-                                setState(() {
-                                  if (v == true) {
-                                    _selected.addAll(items.map((e) => e['id'] as String));
-                                  } else {
-                                    _selected.clear();
-                                  }
-                                });
-                              },
-                            ),
-                            size: ColumnSize.S,
-                          ),
-                          ..._columns.map((c) => DataColumn2(label: Text(c.$2))),
-                        ],
-                        rows: items.map((row) {
-                          final id = row['id'] as String;
-                          return DataRow2(
-                            onTap: () => _openMemberDetail(row),
-                            cells: [
-                              DataCell(Checkbox(
-                                value: _selected.contains(id),
-                                onChanged: (v) {
-                                  setState(() {
-                                    if (v == true) {
-                                      _selected.add(id);
-                                    } else {
-                                      _selected.remove(id);
-                                    }
-                                  });
-                                },
-                              )),
-                              ..._columns.map((c) => DataCell(Text('${row[c.$1] ?? '-'}'))),
+          : AdminListPanel(
+              child: items.isEmpty
+                  ? const SizedBox(
+                      height: 240,
+                      child: Center(child: AdminEmptyList()),
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: DataTable2(
+                            columnSpacing: 12,
+                            horizontalMargin: 12,
+                            minWidth: 960,
+                            headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+                            columns: [
+                              DataColumn2(
+                                label: Checkbox(
+                                  value: _selected.length == items.length && items.isNotEmpty,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      if (v == true) {
+                                        _selected.addAll(items.map((e) => e['id'] as String));
+                                      } else {
+                                        _selected.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                                size: ColumnSize.S,
+                              ),
+                              ..._columns.map((c) => DataColumn2(label: Text(c.$2))),
                             ],
-                          );
-                        }).toList(),
-                      ),
+                            rows: items.map((row) {
+                              final id = row['id'] as String;
+                              return DataRow2(
+                                onTap: () => _openMemberDetail(row),
+                                cells: [
+                                  DataCell(Checkbox(
+                                    value: _selected.contains(id),
+                                    onChanged: (v) {
+                                      setState(() {
+                                        if (v == true) {
+                                          _selected.add(id);
+                                        } else {
+                                          _selected.remove(id);
+                                        }
+                                      });
+                                    },
+                                  )),
+                                  ..._columns.map((c) {
+                                    if (c.$1 == 'gender') {
+                                      return DataCell(GenderCellText('${row[c.$1] ?? '-'}'));
+                                    }
+                                    return DataCell(Text('${row[c.$1] ?? '-'}'));
+                                  }),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        ListPageFooter(
+                          page: _page,
+                          totalPages: totalPages,
+                          totalCount: totalCount,
+                          onPageChanged: (p) {
+                            setState(() => _page = p);
+                            _load();
+                          },
+                        ),
+                      ],
                     ),
-                    ListPageFooter(
-                      page: _page,
-                      totalPages: totalPages,
-                      totalCount: totalCount,
-                      onPageChanged: (p) {
-                        setState(() => _page = p);
-                        _load();
-                      },
-                    ),
-                  ],
-                ),
+            ),
     );
   }
 }

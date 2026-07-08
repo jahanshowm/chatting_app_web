@@ -189,7 +189,7 @@ class SearchFilterBar extends StatelessWidget {
   }
 }
 
-/// 엑셀: [이전] 1 2 3 ... [다음] (10페이지 단위)
+/// 페이지네이션: [이전] 1 2 3 ... [다음] (10페이지 단위)
 class PaginationBar extends StatelessWidget {
   const PaginationBar({
     super.key,

@@ -1,4 +1,4 @@
-/// 엑셀/피그마 화면별 메타 (필터·컬럼·화면 ID)
+/// 피그마 화면별 메타 (필터·컬럼·화면 ID)
 class AdminScreenSpec {
   const AdminScreenSpec({
     required this.id,
@@ -121,7 +121,11 @@ const popupListSpec = AdminScreenSpec(
   id: 'NTC-01',
   subtitle: '팝업 목록 관리',
   showDateRange: false,
-  filters: [],
+  filters: [
+    ('all', '전체'),
+    ('title', '제목'),
+  ],
+  searchHint: '검색어를 입력하세요',
 );
 
 const popupFormSpec = AdminScreenSpec(
