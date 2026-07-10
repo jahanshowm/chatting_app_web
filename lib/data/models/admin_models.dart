@@ -59,10 +59,18 @@ class VisitorChartPoint {
 
   factory VisitorChartPoint.fromJson(Map<String, dynamic> json) => VisitorChartPoint(
         label: json['label'] as String? ?? '',
-        male: json['male'] as int? ?? 0,
-        female: json['female'] as int? ?? 0,
-        total: json['total'] as int? ?? 0,
+        male: _readInt(json['male']),
+        female: _readInt(json['female']),
+        total: _readInt(json['total']),
       );
+}
+
+int _readInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
 }
 
 class MemberRow {

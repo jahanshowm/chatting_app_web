@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:randomchat_admin/core/navigation/admin_shell_path_provider.dart';
-import 'package:randomchat_admin/core/navigation/admin_url_sync.dart';
 import 'package:randomchat_admin/core/providers/auth_provider.dart';
 import 'package:randomchat_admin/features/auth/login_screen.dart';
 import 'package:randomchat_admin/features/layout/admin_app_page.dart';
@@ -25,8 +24,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // 북마크/새로고침: /members/new 등 직접 URL → provider에만 반영, URL은 /admin 고정
       if (auth.isAuthenticated && !onLogin && !onAdmin) {
-        ref.read(adminShellPathProvider.notifier).setPath(path, syncBrowserUrl: false);
-        resetAdminBrowserHistory('/admin');
+        ref.read(adminShellPathProvider.notifier).setPathFromRedirect(path);
         return '/admin';
       }
 

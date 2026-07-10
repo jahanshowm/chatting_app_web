@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
+import 'package:randomchat_admin/shared/widgets/admin_aspect_fit_image.dart';
 import 'package:randomchat_admin/shared/utils/resolve_admin_media_url.dart';
 
 /// CMS-02 / INQ-01-01 공통 회원 정보 헤더 (Figma 그리드)
@@ -109,9 +110,13 @@ class _PhotoSlot extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE4E4E4), style: BorderStyle.solid),
       ),
       child: resolved.isNotEmpty
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(7),
-              child: Image.network(resolved, fit: BoxFit.cover),
+          ? Center(
+              child: AdminAspectFitImage.network(
+                url: resolved,
+                maxWidth: 118,
+                maxHeight: 110,
+                borderRadius: 7,
+              ),
             )
           : null,
     );

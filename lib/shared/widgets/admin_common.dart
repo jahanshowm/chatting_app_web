@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 
+export 'admin_aspect_fit_image.dart';
+
 /// Figma CMS/PG/NTC 리스트 영역 테두리
 class AdminListPanel extends StatelessWidget {
   const AdminListPanel({super.key, required this.child});

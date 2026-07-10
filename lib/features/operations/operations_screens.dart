@@ -205,14 +205,12 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                                   DataCell(Text('${row['no'] ?? '-'}')),
                                   DataCell(
                                     imageUrl.isNotEmpty
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(4),
-                                            child: Image.network(
-                                              imageUrl,
-                                              width: 48,
-                                              height: 48,
-                                              fit: BoxFit.cover,
-                                            ),
+                                        ? AdminAspectFitImage.network(
+                                            url: imageUrl,
+                                            maxWidth: 120,
+                                            maxHeight: 48,
+                                            borderRadius: 4,
+                                            alignment: Alignment.center,
                                           )
                                         : const Text('-'),
                                   ),
@@ -418,16 +416,34 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
               },
               child: Text(_image == null ? '이미지 업로드' : _image!.name),
             ),
+            if (_image?.bytes != null) ...[
+              const SizedBox(height: 8),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxW = constraints.maxWidth.isFinite ? constraints.maxWidth : 600.0;
+                  return AdminAspectFitImage.memory(
+                    bytes: _image!.bytes!,
+                    maxWidth: maxW,
+                    maxHeight: 200,
+                    borderRadius: 8,
+                    alignment: Alignment.centerLeft,
+                  );
+                },
+              ),
+            ],
             if (_existingImageUrl != null && _image == null) ...[
               const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  resolveAdminMediaUrl(_existingImageUrl),
-                  height: 120,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Text('이미지를 불러올 수 없습니다'),
-                ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxW = constraints.maxWidth.isFinite ? constraints.maxWidth : 600.0;
+                  return AdminAspectFitImage.network(
+                    url: resolveAdminMediaUrl(_existingImageUrl),
+                    maxWidth: maxW,
+                    maxHeight: 200,
+                    borderRadius: 8,
+                    alignment: Alignment.centerLeft,
+                  );
+                },
               ),
             ],
             _opsSectionTitle('연결 URL'),

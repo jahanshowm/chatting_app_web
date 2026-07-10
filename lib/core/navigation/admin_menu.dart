@@ -154,5 +154,5 @@ void adminNavigate(WidgetRef ref, String path) {
 }
 
 void adminNavigateReplace(WidgetRef ref, String path) {
-  ref.read(adminShellPathProvider.notifier).setPath(path);
+  ref.read(adminShellPathProvider.notifier).setPathReplace(path);
 }

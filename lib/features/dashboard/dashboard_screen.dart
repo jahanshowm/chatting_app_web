@@ -162,29 +162,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     gridData: const FlGridData(show: true),
                                     borderData: FlBorderData(show: false),
                                     lineTouchData: LineTouchData(
+                                      enabled: true,
+                                      handleBuiltInTouches: true,
+                                      touchSpotThreshold: 24,
                                       touchTooltipData: LineTouchTooltipData(
-                                        getTooltipItems: (spots) {
-                                          // 남성·여성 2개 라인 → spot이 2개 오므로 첫 줄만 표시
-                                          if (spots.isEmpty) return [];
-                                          final spot = spots.first;
-                                          final i = spot.x.toInt();
+                                        fitInsideHorizontally: true,
+                                        getTooltipItems: (touchedSpots) {
+                                          if (touchedSpots.isEmpty) return [];
+                                          final spot = touchedSpots.first;
+                                          final i = spot.spotIndex >= 0
+                                              ? spot.spotIndex
+                                              : spot.x.round();
                                           if (i < 0 || i >= _visitors.length) {
-                                            return [];
+                                            return List<LineTooltipItem?>.filled(
+                                              touchedSpots.length,
+                                              null,
+                                            );
                                           }
                                           final point = _visitors[i];
                                           final male =
                                               point.male.toString().padLeft(2, '0');
                                           final female =
                                               point.female.toString().padLeft(2, '0');
-                                          return [
-                                            LineTooltipItem(
-                                              '${point.label}, 남성 : $male명, 여성 : $female명',
-                                              const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ];
+                                          final text = '남성 : $male명 여성 : $female명';
+                                          const style = TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                          );
+                                          return touchedSpots.asMap().entries.map((e) {
+                                            if (e.key == 0) {
+                                              return LineTooltipItem(text, style);
+                                            }
+                                            return null;
+                                          }).toList();
                                         },
                                       ),
                                     ),
