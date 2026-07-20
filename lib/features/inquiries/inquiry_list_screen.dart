@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +28,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
   PaginatedResult<Map<String, dynamic>>? _data;
   final Set<String> _selected = {};
   bool _loading = true;
+  Timer? _pollTimer;
 
   AdminScreenSpec get _spec => widget.withdrawn ? inquiryWithdrawnSpec : inquiryActiveSpec;
 
@@ -33,6 +36,13 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
   void initState() {
     super.initState();
     _load();
+    // A2 INQ-01 — 새로고침 없이 목록 갱신
+    if (!widget.withdrawn) {
+      _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+        if (!mounted || _loading) return;
+        _load(silent: true);
+      });
+    }
   }
 
   @override
@@ -42,12 +52,20 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       _page = 1;
       _keyword.clear();
       _statusFilter = {'all'};
+      _pollTimer?.cancel();
+      if (!widget.withdrawn) {
+        _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+          if (!mounted || _loading) return;
+          _load(silent: true);
+        });
+      }
       _load();
     }
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _keyword.dispose();
     super.dispose();
   }
@@ -57,8 +75,8 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
     return _statusFilter.toList();
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) setState(() => _loading = true);
     try {
       final data = await ref.read(adminApiProvider).inquiries(
             page: _page,
@@ -70,13 +88,15 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       if (!mounted) return;
       setState(() {
         _data = data;
-        _selected.clear();
+        if (!silent) _selected.clear();
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (!silent) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 

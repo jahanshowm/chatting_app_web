@@ -114,6 +114,10 @@ class AdminApi {
     );
   }
 
+  /// PG-01 — 체크된 결제내역 삭제
+  Future<void> deletePayments(List<String> ids) =>
+      _client.deleteData('/admin/payments', data: {'ids': ids});
+
   Future<PaginatedResult<Map<String, dynamic>>> inquiries({
     int page = 1,
     String? keyword,

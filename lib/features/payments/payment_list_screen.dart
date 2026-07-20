@@ -122,13 +122,44 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
     return sum;
   }
 
+  /// PG-01 — 미선택 시 필터 구간 전체합계, 선택 시 선택합계
+  int _displaySum(List<Map<String, dynamic>> items) {
+    if (_selected.isEmpty) return _data?.selectedSum ?? 0;
+    return _selectedSum(items);
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_selected.isEmpty) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('결제내역 삭제'),
+        content: Text('${_selected.length}건을 삭제하시겠습니까?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('삭제')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ref.read(adminApiProvider).deletePayments(_selected.toList());
+      if (!mounted) return;
+      _page = 1;
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat('#,###');
     final items = _data?.page.items ?? [];
     final totalCount = _data?.page.total ?? items.length;
     final totalPages = _data?.page.totalPages ?? 1;
-    final selectedSum = _selectedSum(items);
+    final selectedSum = _displaySum(items);
 
     return AdminContentArea(
       screenId: paymentSpec.id,
@@ -191,12 +222,21 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
           ),
         ],
       ),
-      summary: Align(
-        alignment: Alignment.centerRight,
-        child: Text(
-          '선택합계 ${fmt.format(selectedSum)}원',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
+      summary: Row(
+        children: [
+          if (_selected.isNotEmpty)
+            TextButton(
+              onPressed: _deleteSelected,
+              child: Text('선택 삭제 (${_selected.length})'),
+            ),
+          const Spacer(),
+          Text(
+            _selected.isEmpty
+                ? '전체합계 ${fmt.format(selectedSum)}원'
+                : '선택합계 ${fmt.format(selectedSum)}원',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
