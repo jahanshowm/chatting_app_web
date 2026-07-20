@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:randomchat_admin/core/config/app_env.dart';
 import 'package:randomchat_admin/core/router/app_router.dart';
 import 'package:randomchat_admin/core/theme/app_theme.dart';
+//개발배포: ./deploy/deploy-admin-dev.sh
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

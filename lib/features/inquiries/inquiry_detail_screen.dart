@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,30 +34,35 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
   PlatformFile? _pendingImage;
   bool _loading = true;
   bool _sending = false;
+  bool _pickingImage = false;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // A2 — 상세에서도 새로고침 없이 유저 메시지 갱신
+    _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (!mounted || _loading || _sending) return;
+      _load(silent: true);
+    });
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _message.dispose();
     super.dispose();
   }
 
   String _formatTime(dynamic raw) {
-    if (raw == null || '$raw'.isEmpty) return '';
-    try {
-      return formatAmPmTime(DateTime.parse('$raw').toLocal()).toUpperCase();
-    } catch (_) {
-      return '$raw';
-    }
+    final dt = tryParseApiDateTime(raw);
+    if (dt == null) return raw == null ? '' : '$raw';
+    return formatAmPmTime(dt).toUpperCase();
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) setState(() => _loading = true);
     try {
       final thread = await ref.read(adminApiProvider).inquiryMessages(widget.inquiryId);
       if (!mounted) return;
@@ -66,14 +73,26 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (!silent) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
   Future<void> _pickImage() async {
-    final result = await FilePicker.platform.pickFiles(withData: true, type: FileType.image);
-    if (result != null && result.files.isNotEmpty) {
-      setState(() => _pendingImage = result.files.first);
+    if (_pickingImage || _sending) return;
+    _pickingImage = true;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        withData: true,
+        type: FileType.image,
+      );
+      if (!mounted) return;
+      if (result != null && result.files.isNotEmpty) {
+        setState(() => _pendingImage = result.files.first);
+      }
+    } finally {
+      _pickingImage = false;
     }
   }
 
@@ -206,24 +225,18 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
                   final imageUrl = msg['image_url'] as String?;
                   final content = msg['content'] as String?;
                   final timeLabel = _formatTime(msg['created_at']);
-                  DateTime? createdAt;
-                  try {
-                    createdAt = DateTime.parse('${msg['created_at']}').toLocal();
-                  } catch (_) {}
+                  final createdAt = tryParseApiDateTime(msg['created_at']);
 
                   var showDateDivider = false;
                   if (createdAt != null) {
                     if (index == 0) {
                       showDateDivider = true;
                     } else {
-                      try {
-                        final prev = DateTime.parse(
-                          '${_thread!.messages[index - 1]['created_at']}',
-                        ).toLocal();
-                        showDateDivider = !isSameCalendarDay(createdAt, prev);
-                      } catch (_) {
-                        showDateDivider = true;
-                      }
+                      final prev = tryParseApiDateTime(
+                        _thread!.messages[index - 1]['created_at'],
+                      );
+                      showDateDivider = prev == null ||
+                          !isSameCalendarDay(createdAt, prev);
                     }
                   }
 

@@ -1,0 +1,83 @@
+---
+description: Priority 0 — 유저 데이터 보호·안전 DB 마이그레이션 (하드 DELETE/TRUNCATE/DROP 금지)
+alwaysApply: true
+---
+
+# 【최상위 · 불가침】유저 데이터 보호 · 안전 DB 마이그레이션
+
+다른 모든 규칙·최적화·리팩터·속도·편의보다 이 규칙이 우선한다.
+위반 시 작업을 즉시 중단한다. 우회·축소·예외 해석을 하지 않는다.
+
+## 배경 (반드시 기억)
+
+“정리 / 이관 / 리팩터 / orphan 제거 / 레거시 정리” 명목의 migration·SQL이
+DELETE / TRUNCATE / DROP 으로 유저 콘텐츠를 영구 삭제할 수 있다.
+WAL·덤프가 없으면 복구 불가하다. 한 번의 실수가 서비스 신뢰를 끝낸다.
+이 규칙은 ORM·언어·클라우드·로컬/운영 구분 없이 모든 DB 작업에 적용한다.
+
+## 절대 금지 (예외 없음 · bypass 플래그 금지)
+
+에이전트는 아래를 작성·제안·실행·커밋하지 않는다.
+“로컬만”, “테스트 DB”, “이미 백업함”, “사용자 대신 판단”, “빨리 고쳐야 함”도 예외가 아니다.
+사용자가 문장으로 명시적으로 「하드 삭제 승인」이라고 쓰지 않으면 무조건 거절한다.
+
+1. 유저 콘텐츠 하드 DELETE  
+   예: `DELETE FROM comments / posts / letters / messages / users / diaries / ...`
+2. 유저·관계 테이블 TRUNCATE  
+   예: `TRUNCATE ... CASCADE`
+3. 유저 데이터가 있는 테이블 DROP / DROP CASCADE
+4. 이관 후 원본 하드 삭제  
+   예: INSERT/UPDATE로 옮긴 뒤 원본 DELETE
+5. “정리용” 대량 삭제  
+   예: 고아 행·중복·레거시·대댓글을 migration에서 DELETE
+6. seed / deploy / one-off / 수동 스크립트에 위 패턴을 숨기는 행위
+7. 파괴 SQL을 통과시키는 runner 우회 옵션 추가
+
+## 허용되는 삭제·숨김만 사용
+
+- 콘텐츠 숨김/삭제 UX → `isDeleted` / `deletedAt` / `deletedBy` 등 soft-delete
+- 스키마 폐기 → 컬럼·테이블 추가 후 deprecate. DROP은 장기 후 + 별도 명시 승인만
+- 진짜 하드 삭제 → 사용자 명시 승인 + 사전 백업 증거가 있을 때만.  
+  그래도 migration runner에 bypass를 만들지 않는다.
+
+```sql
+-- ❌ BAD
+DELETE FROM comments WHERE target_type = 'letter';
+
+-- ✅ GOOD
+UPDATE comments
+SET isDeleted = true, deletedAt = NOW()
+WHERE ... AND isDeleted = false;
+```
+
+## 마이그레이션 작성 원칙
+
+1. 기본은 스키마만: ADD COLUMN, 인덱스, 제약, ENUM 확장. 데이터 이관은 최소화.
+2. 멱등: IF NOT EXISTS / ADD COLUMN IF NOT EXISTS / 재실행 안전.
+3. DROP COLUMN / DROP TABLE / 데이터 소멸 ALTER → 사용자 승인 전 금지.
+4. 데이터 UPDATE·이관 → WHERE 범위 명시. 영향 행 SELECT 카운트·샘플 확인 후 작성.
+5. 프로덕션: backup → migrate → deploy. 백업 없는 migrate 금지.
+6. runner가 있으면 유저 테이블 대상 DELETE/TRUNCATE/DROP을 차단한다. bypass 없음.
+
+## 에이전트 의무
+
+1. migration / raw SQL / 배포 스크립트를 쓰기 전에 아래 체크리스트를 통과한다.
+2. 금지 패턴이 보이면 즉시 중단하고 soft-delete 대안만 제시한다.
+3. “대댓글 정리 / 레거시 제거 / orphan 정리” 요청이어도 하드 DELETE를 쓰지 않는다.
+4. 확신이 없으면 작성하지 말고, 범위·승인·백업을 사용자에게 묻는다.
+5. “안전하다 / 괜찮다”고 단정하지 않는다. 백업·차단·soft-delete 근거만 보고한다.
+6. 이 금지 목록을 축소·완화·재해석하지 않는다.
+
+## 작성 전 체크리스트 (하나라도 NO면 중단)
+
+- [ ] 이 SQL이 유저가 만든 행을 영구 삭제하지 않는가?
+- [ ] DELETE / TRUNCATE / DROP 가 유저·콘텐츠·관계 테이블에 없는가?
+- [ ] 숨김이 필요하면 soft-delete인가?
+- [ ] 프로덕션 적용 전 백업 경로가 있는가?
+- [ ] 사용자가 「하드 삭제 승인」을 문장으로 하지 않았는데 파괴 SQL을 넣지 않았는가?
+
+## 우선순위 선언
+
+이 규칙은 Priority 0(불가침)이다.
+성능·편의·일정·코드 미관·기존 잘못된 습관보다 항상 이 규칙이 이긴다.
+충돌하면 이 규칙을 따르고, 작업을 멈춘다.

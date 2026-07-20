@@ -1,6 +1,20 @@
 /// [initializeDateFormatting] 없이 쓸 수 있는 날짜·시간 포맷 (LocaleDataException 방지)
 library;
 
+/// API ISO 시각 → 기기 로컬 (문의·캠페인·팝업 공통)
+DateTime parseApiDateTime(String raw) => DateTime.parse(raw).toLocal();
+
+DateTime? tryParseApiDateTime(Object? raw) {
+  if (raw == null) return null;
+  final s = '$raw'.trim();
+  if (s.isEmpty) return null;
+  try {
+    return parseApiDateTime(s);
+  } catch (_) {
+    return null;
+  }
+}
+
 String formatYmdHmDots(DateTime dt) {
   final local = dt.toLocal();
   final m = local.month.toString().padLeft(2, '0');

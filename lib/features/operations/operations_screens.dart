@@ -273,6 +273,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
   String? _existingImageUrl;
   bool _loading = false;
   bool _loadingData = false;
+  bool _pickingImage = false;
 
   @override
   void initState() {
@@ -288,8 +289,8 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
       final data = await ref.read(adminApiProvider).popupDetail(widget.popupId!);
       _title.text = '${data['title']}';
       _link.text = '${data['link_url'] ?? ''}';
-      _start = DateTime.parse('${data['start_at']}');
-      _end = DateTime.parse('${data['end_at']}');
+      _start = parseApiDateTime('${data['start_at']}');
+      _end = parseApiDateTime('${data['end_at']}');
       _active = data['is_active'] == true;
       _existingImageUrl = data['image_url'] as String?;
       if (mounted) setState(() => _loadingData = false);
@@ -408,12 +409,29 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
             ),
             _opsSectionTitle('이미지'),
             OutlinedButton(
-              onPressed: () async {
-                final result = await FilePicker.platform.pickFiles(withData: true, type: FileType.image);
-                if (result != null && result.files.isNotEmpty) {
-                  setState(() => _image = result.files.first);
-                }
-              },
+              onPressed: _pickingImage
+                  ? null
+                  : () async {
+                      if (_pickingImage) return;
+                      _pickingImage = true;
+                      setState(() {});
+                      try {
+                        final result = await FilePicker.platform.pickFiles(
+                          withData: true,
+                          type: FileType.image,
+                        );
+                        if (!mounted) return;
+                        if (result != null && result.files.isNotEmpty) {
+                          setState(() => _image = result.files.first);
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() => _pickingImage = false);
+                        } else {
+                          _pickingImage = false;
+                        }
+                      }
+                    },
               child: Text(_image == null ? '이미지 업로드' : _image!.name),
             ),
             if (_image?.bytes != null) ...[
@@ -651,7 +669,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                           if (sentAt != null) {
                             try {
                               sentLabel = formatYmdHmDots(
-                                DateTime.parse('$sentAt').toLocal(),
+                                parseApiDateTime('$sentAt'),
                               );
                             } catch (_) {
                               sentLabel = '$sentAt';
@@ -742,12 +760,9 @@ class _FcmDetailScreenState extends ConsumerState<FcmDetailScreen> {
   }
 
   String _formatDt(dynamic raw) {
-    if (raw == null) return '-';
-    try {
-      return formatYmdHmDots(DateTime.parse('$raw').toLocal());
-    } catch (_) {
-      return '$raw';
-    }
+    final dt = tryParseApiDateTime(raw);
+    if (dt == null) return raw == null ? '-' : '$raw';
+    return formatYmdHmDots(dt);
   }
 
   @override

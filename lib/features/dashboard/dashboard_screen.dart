@@ -48,7 +48,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ]);
       if (!mounted) return;
       setState(() {
-        _visitors = results[0] as List<VisitorChartPoint>;
+        // 일간·오늘: 아직 안 온 시각(0)을 잘라 곡선/하강 착시 제거
+        _visitors = _trimFutureDailyHours(
+          results[0] as List<VisitorChartPoint>,
+        );
         _signups = results[1] as List<Map<String, dynamic>>;
         _payments = results[2] as List<Map<String, dynamic>>;
         _loading = false;
@@ -79,6 +82,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (p.female > max) max = p.female;
     }
     return (max + 2).toDouble();
+  }
+
+  /// DAS-01 — X축 라벨 중첩 방지 (일간 24 / 월간 ~31)
+  double get _bottomTitleInterval {
+    final n = _visitors.length;
+    if (n <= 8) return 1;
+    if (n <= 16) return 2;
+    if (n <= 24) return 3;
+    return (n / 10).ceil().toDouble();
+  }
+
+  /// 오늘 일간 차트에서 현재 시각 이후 버킷(대개 0) 제거
+  List<VisitorChartPoint> _trimFutureDailyHours(
+    List<VisitorChartPoint> points,
+  ) {
+    if (_period != 'daily' || points.isEmpty) return points;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final startDay = DateTime(_start.year, _start.month, _start.day);
+    final endDay = DateTime(_end.year, _end.month, _end.day);
+    if (startDay != endDay || startDay != today) return points;
+    // 단일일 라벨: "0시" … "23시"
+    if (points.length == 24 && points.first.label.endsWith('시')) {
+      final endInclusive = now.hour.clamp(0, 23);
+      return points.sublist(0, endInclusive + 1);
+    }
+    return points;
   }
 
   @override
@@ -202,16 +232,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       bottomTitles: AxisTitles(
                                         sideTitles: SideTitles(
                                           showTitles: true,
-                                          getTitlesWidget: (v, _) {
-                                            final i = v.toInt();
+                                          reservedSize: 28,
+                                          interval: _bottomTitleInterval,
+                                          getTitlesWidget: (v, meta) {
+                                            final i = v.round();
                                             if (i < 0 || i >= _visitors.length) {
+                                              return const SizedBox.shrink();
+                                            }
+                                            final step = _bottomTitleInterval.round();
+                                            final isLast = i == _visitors.length - 1;
+                                            if (step > 1 &&
+                                                i % step != 0 &&
+                                                !isLast) {
                                               return const SizedBox.shrink();
                                             }
                                             return Padding(
                                               padding: const EdgeInsets.only(top: 8),
                                               child: Text(
                                                 _visitors[i].label,
-                                                style: const TextStyle(fontSize: 10),
+                                                style: TextStyle(
+                                                  fontSize: _visitors.length > 14
+                                                      ? 9
+                                                      : 10,
+                                                ),
                                               ),
                                             );
                                           },
@@ -233,7 +276,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                           for (var i = 0; i < _visitors.length; i++)
                                             FlSpot(i.toDouble(), _visitors[i].male.toDouble()),
                                         ],
-                                        isCurved: true,
+                                        // 곡선이면 0값 구간(미래 시각)에서 아래로 휘어 보임
+                                        isCurved: false,
                                         color: AppColors.male,
                                         barWidth: 2,
                                         dotData: const FlDotData(show: true),
@@ -243,7 +287,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                           for (var i = 0; i < _visitors.length; i++)
                                             FlSpot(i.toDouble(), _visitors[i].female.toDouble()),
                                         ],
-                                        isCurved: true,
+                                        isCurved: false,
                                         color: AppColors.female,
                                         barWidth: 2,
                                         dotData: const FlDotData(show: true),
