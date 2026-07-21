@@ -38,7 +38,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
     _load();
     // A2 INQ-01 — 새로고침 없이 목록 갱신
     if (!widget.withdrawn) {
-      _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
         if (!mounted || _loading) return;
         _load(silent: true);
       });
@@ -54,7 +54,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       _statusFilter = {'all'};
       _pollTimer?.cancel();
       if (!widget.withdrawn) {
-        _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+        _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
           if (!mounted || _loading) return;
           _load(silent: true);
         });

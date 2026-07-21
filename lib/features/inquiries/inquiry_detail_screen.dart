@@ -42,7 +42,7 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
     super.initState();
     _load();
     // A2 — 상세에서도 새로고침 없이 유저 메시지 갱신
-    _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted || _loading || _sending) return;
       _load(silent: true);
     });

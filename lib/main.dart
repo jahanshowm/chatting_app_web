@@ -7,6 +7,8 @@ import 'package:randomchat_admin/core/config/app_env.dart';
 import 'package:randomchat_admin/core/router/app_router.dart';
 import 'package:randomchat_admin/core/theme/app_theme.dart';
 //개발배포: ./deploy/deploy-admin-dev.sh
+//어드민페이지 개발 주소: https://admin-dev.adminchat.kr/
+//어드민페이지 배포 주소: https://admin.adminchat.kr/
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
