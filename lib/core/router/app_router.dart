@@ -31,15 +31,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/admin', builder: (_, __) => const AdminAppPage()),
+      GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+      GoRoute(path: '/admin', builder: (_, _) => const AdminAppPage()),
     ],
   );
 });
 
 class _AuthRefreshListenable extends ChangeNotifier {
   _AuthRefreshListenable(this.ref) {
-    ref.listen(authProvider, (_, __) => notifyListeners());
+    ref.listen(authProvider, (_, _) => notifyListeners());
   }
 
   final Ref ref;

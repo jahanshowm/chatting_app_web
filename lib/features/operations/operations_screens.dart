@@ -1184,7 +1184,7 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
                   child: DropdownButtonFormField<int>(
                     initialValue: _ageMin,
                     decoration: const InputDecoration(labelText: '연령대(최소)'),
-                    items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
+                    items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('$i대'))],
                     onChanged: (v) => setState(() => _ageMin = v ?? 20),
                   ),
                 ),
@@ -1193,7 +1193,7 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
                   child: DropdownButtonFormField<int>(
                     initialValue: _ageMax,
                     decoration: const InputDecoration(labelText: '연령대(최대)'),
-                    items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('${i}대'))],
+                    items: [for (var i = 20; i <= 70; i += 10) DropdownMenuItem(value: i, child: Text('$i대'))],
                     onChanged: (v) => setState(() => _ageMax = v ?? 70),
                   ),
                 ),

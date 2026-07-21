@@ -92,7 +92,7 @@ class _AdminAspectFitImageState extends State<AdminAspectFitImage> {
         );
         _applyDisplaySize();
       },
-      onError: (_, __) {
+      onError: (_, _) {
         if (mounted) setState(() => _failed = true);
       },
     );

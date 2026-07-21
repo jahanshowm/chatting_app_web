@@ -31,8 +31,8 @@ class AdminApi {
       '/admin/dashboard/visitors',
       queryParameters: {
         'period': period,
-        if (startDate != null) 'start_date': startDate,
-        if (endDate != null) 'end_date': endDate,
+        'start_date': ?startDate,
+        'end_date': ?endDate,
       },
       fromJson: VisitorChartPoint.fromJson,
     );
@@ -57,10 +57,10 @@ class AdminApi {
       queryParameters: {
         'tab': tab,
         'page': page,
-        if (filter != null) 'filter': filter,
+        'filter': ?filter,
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
-        if (startDate != null) 'start_date': startDate,
-        if (endDate != null) 'end_date': endDate,
+        'start_date': ?startDate,
+        'end_date': ?endDate,
       },
       fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),
     );
@@ -103,11 +103,11 @@ class AdminApi {
       '/admin/payments',
       queryParameters: {
         'page': page,
-        if (filter != null) 'filter': filter,
+        'filter': ?filter,
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
-        if (startDate != null) 'start_date': startDate,
-        if (endDate != null) 'end_date': endDate,
-        if (period != null) 'period': period,
+        'start_date': ?startDate,
+        'end_date': ?endDate,
+        'period': ?period,
         if (userId != null && userId.isNotEmpty) 'user_id': userId,
       },
       fromJson: PaymentListResult.fromJson,
@@ -132,7 +132,7 @@ class AdminApi {
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
         'withdrawn': withdrawn,
         if (userId != null && userId.isNotEmpty) 'user_id': userId,
-        if (statuses != null) 'statuses': statuses,
+        'statuses': ?statuses,
       },
       fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),
     );
@@ -229,8 +229,8 @@ class AdminApi {
       '/admin/fcm',
       queryParameters: {
         'page': page,
-        if (startDate != null) 'start_date': startDate,
-        if (endDate != null) 'end_date': endDate,
+        'start_date': ?startDate,
+        'end_date': ?endDate,
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
       },
       fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),

@@ -26,6 +26,7 @@ dependencies:
   vsc_quill_delta_to_html: ^1.0.5
   flutter_svg: ^2.0.17
 
+  flutter_quill_delta_from_html: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,3 +1,6 @@
+// Web 전용 URL sync (조건부 import). dart:html 사용이 의도됨.
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
+
 import 'dart:html' as html;
 
 void replaceAdminBrowserUrl(String path) {
