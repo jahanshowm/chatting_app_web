@@ -1557,6 +1557,14 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
               ),
             ],
           ),
+          // NTC-01-07 — 상단 고정: 목록 상단 정렬 (홈 팝업 아님)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              '상단 고정: 공지 목록 상단에 정렬됩니다. 메인 홈 팝업은 노출되지 않습니다.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
           const SizedBox(height: 12),
           Expanded(
             child: NoticeRichEditor(

@@ -11,6 +11,7 @@ import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
 import 'package:randomchat_admin/shared/widgets/admin_detail_back_bar.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
+import 'package:randomchat_admin/shared/widgets/fullscreen_image_viewer.dart';
 import 'package:randomchat_admin/shared/widgets/member_info_header.dart';
 import 'package:randomchat_admin/shared/utils/resolve_admin_media_url.dart';
 
@@ -161,9 +162,12 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
   }
 
   Widget _messageBubble({
+    required BuildContext context,
     required String? content,
     required String? imageUrl,
   }) {
+    final resolvedImage =
+        imageUrl != null && imageUrl.isNotEmpty ? resolveAdminMediaUrl(imageUrl) : '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -180,14 +184,20 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
           ),
-        if (imageUrl != null && imageUrl.isNotEmpty) ...[
+        if (resolvedImage.isNotEmpty) ...[
           if (content != null && content.isNotEmpty) const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              resolveAdminMediaUrl(imageUrl),
-              width: 200,
-              fit: BoxFit.cover,
+          GestureDetector(
+            onTap: () => FullscreenImageViewer.show(
+              context,
+              imageUrl: resolvedImage,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                resolvedImage,
+                width: 200,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ],
@@ -293,6 +303,7 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
                                   ],
                                   Flexible(
                                     child: _messageBubble(
+                                      context: context,
                                       content: content,
                                       imageUrl: imageUrl,
                                     ),

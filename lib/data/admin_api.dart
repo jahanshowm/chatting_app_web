@@ -170,7 +170,8 @@ class AdminApi {
       '/admin/notices',
       queryParameters: {
         'page': page,
-        if (filter != null && filter != 'all') 'filter': filter,
+        // NTC-01-06 — 전체 필터도 명시 전달 (일자 검색 포함 분기)
+        if (filter != null && filter.isNotEmpty) 'filter': filter,
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
       },
       fromJson: (j) => PaginatedResult.fromJson(j, (e) => e),
