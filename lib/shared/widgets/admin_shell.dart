@@ -169,7 +169,7 @@ class _SidebarBodyState extends State<_SidebarBody> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  '중년의 품격',
+                  '스몰톡',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,

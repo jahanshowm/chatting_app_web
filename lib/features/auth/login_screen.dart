@@ -114,7 +114,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      '중년의 품격',
+                      '스몰톡',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,

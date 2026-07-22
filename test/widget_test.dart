@@ -21,7 +21,7 @@ void main() {
     );
     await tester.pumpAndSettle(const Duration(seconds: 3));
 
-    expect(find.text('중년의 품격'), findsOneWidget);
+    expect(find.text('스몰톡'), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));
     expect(find.byType(ElevatedButton), findsOneWidget);
   });
