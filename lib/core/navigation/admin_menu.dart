@@ -23,25 +23,41 @@ class AdminMenuSection {
   bool matchesPath(String path) => items.any((i) => _pathMatches(i.path, path));
 
   static bool _pathMatches(String menuPath, String current) {
-    if (menuPath == current) return true;
+    final uri = Uri.parse(current.startsWith('/') ? current : '/$current');
+    final path = uri.path;
+    final from = uri.queryParameters['from'];
+
+    if (menuPath == path || menuPath == current) return true;
     if (menuPath == '/members/report-block') {
-      return current.startsWith('/members/report-block') ||
-          current.startsWith('/members/reports') ||
-          current.startsWith('/members/blocks');
+      return path.startsWith('/members/report-block') ||
+          path.startsWith('/members/reports') ||
+          path.startsWith('/members/blocks');
     }
     if (menuPath == '/members/new') {
-      final parts = current.split('/');
+      final parts = path.split('/');
       if (parts.length == 3 && parts[1] == 'members' && parts[2].length > 12) {
         return true;
       }
     }
-    if (menuPath.startsWith('/members/') && current.startsWith('/members/')) {
-      final segments = current.split('/');
+    if (menuPath.startsWith('/members/') && path.startsWith('/members/')) {
+      final segments = path.split('/');
       if (segments.length == 3 && segments[2].length > 20) {
         return menuPath == '/members/new';
       }
     }
-    return current.startsWith('$menuPath/') || (menuPath != '/' && current.startsWith(menuPath));
+    // INQ-01-02 — 문의 상세는 from 쿼리로 활동/탈퇴 섹션 매칭
+    if (path.startsWith('/inquiries/') &&
+        path != '/inquiries/active' &&
+        path != '/inquiries/withdrawn') {
+      if (menuPath == '/inquiries/withdrawn') {
+        return from == '/inquiries/withdrawn';
+      }
+      if (menuPath == '/inquiries/active') {
+        return from != '/inquiries/withdrawn';
+      }
+    }
+    return path.startsWith('$menuPath/') ||
+        (menuPath != '/' && path.startsWith(menuPath));
   }
 }
 
@@ -115,10 +131,18 @@ AdminBreadcrumb adminBreadcrumbForPath(String path) {
     }
   }
 
-  if (path.startsWith('/inquiries/') &&
-      path != '/inquiries/active' &&
-      path != '/inquiries/withdrawn') {
-    return const AdminBreadcrumb(section: '문의내역', item: '문의 답변');
+  {
+    final uri = Uri.parse(path.startsWith('/') ? path : '/$path');
+    final p = uri.path;
+    if (p.startsWith('/inquiries/') &&
+        p != '/inquiries/active' &&
+        p != '/inquiries/withdrawn') {
+      final fromWithdrawn = uri.queryParameters['from'] == '/inquiries/withdrawn';
+      return AdminBreadcrumb(
+        section: '문의내역',
+        item: fromWithdrawn ? '탈퇴 회원' : '문의 답변',
+      );
+    }
   }
 
   if (path.contains('/operations/popups/new')) {

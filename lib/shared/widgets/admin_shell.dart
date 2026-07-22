@@ -121,7 +121,14 @@ class _SidebarBodyState extends State<_SidebarBody> {
   }
 
   bool _isSelected(AdminMenuItem item) {
-    final path = widget.currentPath;
+    final uri = Uri.parse(
+      widget.currentPath.startsWith('/')
+          ? widget.currentPath
+          : '/${widget.currentPath}',
+    );
+    final path = uri.path;
+    final from = uri.queryParameters['from'];
+
     if (item.path == path) return true;
     if (item.path == '/members/report-block') {
       return path.startsWith('/members/report-block') ||
@@ -134,11 +141,16 @@ class _SidebarBodyState extends State<_SidebarBody> {
         return true;
       }
     }
-    if (item.path == '/inquiries/active' &&
-        path.startsWith('/inquiries/') &&
-        path != '/inquiries/withdrawn' &&
-        path != '/inquiries/active') {
-      return true;
+    // INQ-01-02 — 문의 상세는 ?from= 기준으로 활동/탈퇴 메뉴 유지
+    if (path.startsWith('/inquiries/') &&
+        path != '/inquiries/active' &&
+        path != '/inquiries/withdrawn') {
+      if (item.path == '/inquiries/withdrawn') {
+        return from == '/inquiries/withdrawn';
+      }
+      if (item.path == '/inquiries/active') {
+        return from != '/inquiries/withdrawn';
+      }
     }
     return path.startsWith('${item.path}/');
   }

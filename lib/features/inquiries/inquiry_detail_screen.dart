@@ -128,17 +128,23 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
 
   Widget _memberAvatar(String memberName) {
     final photos = _photos;
-    if (photos.isNotEmpty) {
+    final withdrawn = _thread?.member['withdrawn'] == true;
+    if (!withdrawn && photos.isNotEmpty) {
       return CircleAvatar(
         radius: 18,
         backgroundColor: AppColors.border,
         backgroundImage: NetworkImage(resolveAdminMediaUrl(photos.first)),
       );
     }
+    final initial = memberName.isEmpty || memberName == '-'
+        ? '-'
+        : memberName == '*'
+            ? '*'
+            : memberName.characters.first;
     return CircleAvatar(
       radius: 18,
       backgroundColor: AppColors.border,
-      child: Text(memberName.characters.first),
+      child: Text(initial),
     );
   }
 
@@ -212,14 +218,29 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
     return AdminContentArea(
       screenId: inquiryDetailSpec.id,
       subtitle: inquiryDetailSpec.subtitle,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AdminDetailBackBar(backPath: widget.listPath),
-          MemberInfoHeader(data: _thread?.member ?? {}, photos: _photos),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Container(
+      // NTC-01-01 — 채팅 영역 비중 확대 (회원정보 헤더 높이 상한)
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final headerMax =
+              (constraints.maxHeight * 0.30).clamp(140.0, 260.0);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AdminDetailBackBar(backPath: widget.listPath),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: headerMax),
+                child: SingleChildScrollView(
+                  child: MemberInfoHeader(
+                    data: _thread?.member ?? {},
+                    photos: _photos,
+                    compact: true,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                flex: 3,
+                child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -409,7 +430,9 @@ class _InquiryDetailScreenState extends ConsumerState<InquiryDetailScreen> {
                 ),
             ],
           ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
