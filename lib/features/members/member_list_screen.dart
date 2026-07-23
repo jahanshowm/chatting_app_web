@@ -1,3 +1,4 @@
+/// MEM — 신규/탈퇴 회원 목록·검색·필터
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

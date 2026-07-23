@@ -1,3 +1,4 @@
+/// ADMIN — CMS 앱 엔트리·env·MaterialApp.router
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';

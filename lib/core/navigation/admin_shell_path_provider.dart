@@ -1,3 +1,4 @@
+/// ADMIN NAV — CMS 내부 path 스택
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'admin_url_sync.dart';
 

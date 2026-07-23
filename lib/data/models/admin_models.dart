@@ -1,3 +1,4 @@
+/// ADMIN — DTO·페이지네이션 모델
 class PaginatedResult<T> {
   PaginatedResult({
     required this.items,

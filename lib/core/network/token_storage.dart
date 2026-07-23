@@ -1,3 +1,4 @@
+/// ADMIN AUTH — access token·아이디 SharedPreferences
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TokenStorage {

@@ -1,3 +1,4 @@
+/// ADMIN AUTH — 토큰 부트스트랩·login/logout
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/config/app_env.dart';
 import 'package:randomchat_admin/core/network/api_client.dart';

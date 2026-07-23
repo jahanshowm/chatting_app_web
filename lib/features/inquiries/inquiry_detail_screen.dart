@@ -1,3 +1,4 @@
+/// INQ — 문의 스레드 조회·답변(탈퇴 회원 PII 마스킹)
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';

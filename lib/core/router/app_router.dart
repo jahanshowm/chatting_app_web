@@ -1,3 +1,4 @@
+/// ADMIN ROUTER — /login·/admin 라우트·인증 redirect
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';

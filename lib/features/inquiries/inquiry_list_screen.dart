@@ -1,3 +1,4 @@
+/// INQ — 활동/탈퇴 회원 문의 목록
 import 'dart:async';
 
 import 'package:data_table_2/data_table_2.dart';

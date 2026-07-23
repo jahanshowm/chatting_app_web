@@ -1,3 +1,4 @@
+/// MEM — 회원 상세·신고/활동
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

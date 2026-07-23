@@ -1,3 +1,4 @@
+/// ADMIN — 셸 + content host 조립
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/navigation/admin_shell_path_provider.dart';
