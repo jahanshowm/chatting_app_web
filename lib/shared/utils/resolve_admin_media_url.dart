@@ -14,7 +14,7 @@ String resolveAdminMediaUrl(String? url) {
   late Uri uri;
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     final path = url.startsWith('/') ? url : '/$url';
-    uri = apiBase.replace(path: path, query: '', fragment: '');
+    uri = _originUri(apiBase, path);
   } else {
     final parsed = Uri.tryParse(url);
     if (parsed == null) return url;
@@ -36,34 +36,26 @@ String resolveAdminMediaUrl(String? url) {
 
   if (!isPhoto && !isAdminUpload) {
     if (isLegacy) {
-      return uri
-          .replace(
-            scheme: apiBase.scheme,
-            host: apiBase.host,
-            port: apiBase.hasPort ? apiBase.port : null,
-          )
-          .toString();
+      return _originUri(apiBase, uri.path).toString();
     }
     return uri.toString();
   }
 
   // 프로필·문의 첨부 → 앱 미디어 호스트 /api/...
   if (isPhoto || isInquiryUpload) {
-    return mediaBase
-        .replace(
-          path: '/api$path',
-          query: '',
-          fragment: '',
-        )
-        .toString();
+    return _originUri(mediaBase, '/api$path').toString();
   }
 
-  // 어드민 업로드(팝업 등) → 어드민 API /api/...
-  return apiBase
-      .replace(
-        path: '/api$path',
-        query: '',
-        fragment: '',
-      )
-      .toString();
+  // 팝업 등 — DB가 앱 미디어 호스트면 유지(공유 디스크), 아니면 어드민 API
+  final origin = uri.host == mediaBase.host ? mediaBase : apiBase;
+  return _originUri(origin, '/api$path').toString();
+}
+
+Uri _originUri(Uri base, String path) {
+  return Uri(
+    scheme: base.scheme,
+    host: base.host,
+    port: base.hasPort ? base.port : null,
+    path: path,
+  );
 }
