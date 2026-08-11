@@ -13,9 +13,16 @@ import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 
 class InquiryListScreen extends ConsumerStatefulWidget {
-  const InquiryListScreen({super.key, this.withdrawn = false, this.userId});
+  const InquiryListScreen({
+    super.key,
+    this.withdrawn = false,
+    this.userId,
+    this.fromPath,
+  });
 
   final bool withdrawn;
+  /// CMS-01-03 — 탈퇴회원에서 진입 시 복귀 경로
+  final String? fromPath;
   final String? userId;
 
   @override
@@ -102,10 +109,22 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
   }
 
   void _openDetail(String id) {
-    final from = widget.withdrawn ? '/inquiries/withdrawn' : '/inquiries/active';
-    adminNavigateReplace(
+    // CMS-01-03 — 탈퇴회원→문의리스트→상세 후에도 from 체인 유지
+    final base =
+        widget.withdrawn ? '/inquiries/withdrawn' : '/inquiries/active';
+    final params = <String, String>{};
+    if (widget.userId != null && widget.userId!.isNotEmpty) {
+      params['user_id'] = widget.userId!;
+    }
+    if (widget.fromPath != null && widget.fromPath!.isNotEmpty) {
+      params['from'] = widget.fromPath!;
+    }
+    final listReturn = params.isEmpty
+        ? base
+        : Uri(path: base, queryParameters: params).toString();
+    adminNavigate(
       ref,
-      '/inquiries/$id?from=${Uri.encodeComponent(from)}',
+      '/inquiries/$id?from=${Uri.encodeComponent(listReturn)}',
     );
   }
 
@@ -142,14 +161,21 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // CMS-01-03 — 복귀는 브라우저(크롬) 뒤로가기. 커스텀 뒤로가기 UI 없음.
           if (widget.userId != null) ...[
             UserFilterBanner(
               userId: widget.userId!,
               label: widget.withdrawn ? '탈퇴 회원 문의내역' : '회원 문의내역',
-              onClear: () => adminNavigateReplace(
-                ref,
-                widget.withdrawn ? '/inquiries/withdrawn' : '/inquiries/active',
-              ),
+              onClear: () {
+                final fallback = widget.withdrawn
+                    ? '/inquiries/withdrawn'
+                    : '/inquiries/active';
+                if (widget.fromPath != null && widget.fromPath!.isNotEmpty) {
+                  adminNavigateBack(ref, widget.fromPath!);
+                } else {
+                  adminNavigateReplace(ref, fallback);
+                }
+              },
             ),
             const SizedBox(height: 16),
           ],

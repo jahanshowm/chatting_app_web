@@ -175,25 +175,29 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                               final targetUserId =
                                   row['target_user_id']?.toString();
                               VoidCallback? onTap;
+                              // CMS-02 — 히스토리(문의/결제/신고/차단)에서 직전 회원 상세로 복귀
+                              final returnTo =
+                                  '/members/${widget.userId}?from=${Uri.encodeComponent(widget.listPath)}';
                               if (_activityTab == 'inquiry' &&
                                   inquiryId != null &&
                                   inquiryId.isNotEmpty) {
-                                onTap = () => adminNavigateReplace(
+                                // CMS-02 — push → 크롬 뒤로가기로 이전 회원 상세 복귀
+                                onTap = () => adminNavigate(
                                       ref,
-                                      '/inquiries/$inquiryId?from=${Uri.encodeComponent(widget.listPath)}',
+                                      '/inquiries/$inquiryId?from=${Uri.encodeComponent(returnTo)}',
                                     );
                               } else if (_activityTab == 'payment') {
-                                onTap = () => adminNavigateReplace(
+                                onTap = () => adminNavigate(
                                       ref,
-                                      '/payments?user_id=${Uri.encodeComponent(widget.userId)}',
+                                      '/payments?user_id=${Uri.encodeComponent(widget.userId)}&from=${Uri.encodeComponent(returnTo)}',
                                     );
                               } else if ((_activityTab == 'report' ||
                                       _activityTab == 'block') &&
                                   targetUserId != null &&
                                   targetUserId.isNotEmpty) {
-                                onTap = () => adminNavigateReplace(
+                                onTap = () => adminNavigate(
                                       ref,
-                                      '/members/$targetUserId?from=${Uri.encodeComponent(widget.listPath)}',
+                                      '/members/$targetUserId?from=${Uri.encodeComponent(returnTo)}',
                                     );
                               }
                               return DataRow2(

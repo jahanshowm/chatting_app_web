@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
+# 운영 — adminchat.kr Web (/home/users/adminchat/www)
 set -euo pipefail
 
-# adminchat.kr — deploy-admin.sh + deploy.config.adminchat (Web rsync만)
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export DEPLOY_CONFIG="$ROOT/deploy/deploy.config.adminchat"
+export DEPLOY_CONFIG="$ROOT/deploy/deploy.config"
 exec "$ROOT/deploy/deploy-admin.sh" "$@"

@@ -180,3 +180,8 @@ void adminNavigate(WidgetRef ref, String path) {
 void adminNavigateReplace(WidgetRef ref, String path) {
   ref.read(adminShellPathProvider.notifier).setPathReplace(path);
 }
+
+/// 「목록으로」— 가능하면 브라우저(크롬) history.back()으로 직전 화면 복귀
+void adminNavigateBack(WidgetRef ref, String fallbackPath) {
+  ref.read(adminShellPathProvider.notifier).navigateBackOr(fallbackPath);
+}

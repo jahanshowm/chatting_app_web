@@ -7,9 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:randomchat_admin/core/config/app_env.dart';
 import 'package:randomchat_admin/core/router/app_router.dart';
 import 'package:randomchat_admin/core/theme/app_theme.dart';
-//개발배포: ./deploy/deploy-admin-dev.sh
-//어드민페이지 개발 주소: https://admin-dev.adminchat.kr/
-//어드민페이지 배포 주소: https://admin.adminchat.kr/
+// QA Web: ./deploy/deploy-admin-dev.sh → https://admin-dev.adminchat.kr
+// 운영 Web: ./deploy/deploy-adminchat.sh → https://adminchat.kr
+// 운영 API: (cwd randomchat_back) ./deploy/deploy-adminchat-api.sh
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -13,8 +13,8 @@ alwaysApply: true
 
 | URL | 용도 | API 포트(참고) |
 |-----|------|----------------|
-| `randomchat.kr` | 앱 운영 API + 어드민 Web(`/var/www/randomchat`) | `:3000` |
-| `adminchat.kr` | 어드민 CMS(`/var/www/adminchat`) | `:3001` |
+| `randomchat.kr` | 앱 운영 API(`/home/users/randomchat/www`) + 정적 Web(`/home/users/randomchat/web`) | `:3000` |
+| `adminchat.kr` | 어드민 CMS(`/home/users/adminchat/www`) | `:3001` |
 | `chat-test.inp.kr` | QA API | `:3001` |
 
 ## 업무 구분
@@ -56,7 +56,7 @@ SSL 발급 = HTTPS 인증서 생성/갱신. certbot = Let's Encrypt 발급 CLI. 
 증상:
 필요 작업: (예: adminchat.kr SSL vhost, ProxyPass :3001)
 영향 URL:
-개발 측 완료: (Web 빌드 → /var/www/adminchat rsync 대기)
+개발 측 완료: (Web 빌드 → /home/users/adminchat/www rsync 대기)
 ```
 
 교차 참조: `admin-deploy.mdc`(Web 배포는 rsync만, Apache/SSL은 서버 담당).

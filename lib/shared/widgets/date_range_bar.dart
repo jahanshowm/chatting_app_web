@@ -52,6 +52,13 @@ class DateRangeBar extends StatelessWidget {
     );
     if (picked == null) return;
 
+    // DAS-01 — 일간은 하루만 선택 (시작=종료)
+    if (period == 'daily') {
+      final d = _dateOnly(picked);
+      onChanged(d, d);
+      return;
+    }
+
     final nextStart = isStart ? picked : start;
     final nextEnd = isStart ? end : picked;
     if (!isValidRange(nextStart, nextEnd)) {
@@ -95,11 +102,13 @@ class DateRangeBar extends StatelessWidget {
               onPressed: () => _pick(context, true),
               child: Text(formatDisplay(start)),
             ),
-            const Text('~'),
-            OutlinedButton(
-              onPressed: () => _pick(context, false),
-              child: Text(formatDisplay(end)),
-            ),
+            if (period != 'daily') ...[
+              const Text('~'),
+              OutlinedButton(
+                onPressed: () => _pick(context, false),
+                child: Text(formatDisplay(end)),
+              ),
+            ],
             TextButton(
               onPressed: () {
                 final today = DateTime.now();

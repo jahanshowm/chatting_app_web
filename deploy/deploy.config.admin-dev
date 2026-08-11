@@ -1,5 +1,5 @@
-# admin-dev.adminchat.kr — chat-test 개발 서버 (15.165.251.103)
-# deploy-admin-dev.sh 가 참조
+# QA — admin-dev.adminchat.kr (chat-test 서버)
+# deploy-admin-dev.sh 전용
 
 DEPLOY_SSH=root@chat-test.inp.kr
 DEPLOY_DOMAIN=admin-dev.adminchat.kr

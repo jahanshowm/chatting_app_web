@@ -115,7 +115,7 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
             : row['reporter_user_id'])
         ?.toString();
     if (userId == null || userId.isEmpty) return;
-    adminNavigateReplace(
+    adminNavigate(
       ref,
       '/members/$userId?from=${Uri.encodeComponent('/members/report-block')}',
     );

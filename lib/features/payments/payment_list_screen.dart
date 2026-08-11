@@ -13,9 +13,11 @@ import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 
 class PaymentListScreen extends ConsumerStatefulWidget {
-  const PaymentListScreen({super.key, this.userId});
+  const PaymentListScreen({super.key, this.userId, this.fromPath});
 
   final String? userId;
+  /// CMS-01-03 — 탈퇴회원 등에서 진입 시 복귀 경로
+  final String? fromPath;
 
   @override
   ConsumerState<PaymentListScreen> createState() => _PaymentListScreenState();
@@ -93,16 +95,23 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
   }
 
   void _clearUserFilter() {
+    // 복귀는 브라우저 뒤로가기와 동일
+    final back = widget.fromPath;
+    if (back != null && back.isNotEmpty) {
+      adminNavigateBack(ref, back);
+      return;
+    }
     adminNavigateReplace(ref, '/payments');
   }
 
   void _openMemberDetail(Map<String, dynamic> row) {
     final userId = row['user_id']?.toString();
     if (userId == null || userId.isEmpty) return;
-    final from = widget.userId != null
-        ? '/payments?user_id=${Uri.encodeComponent(widget.userId!)}'
-        : '/payments';
-    adminNavigateReplace(
+    final from = widget.fromPath ??
+        (widget.userId != null
+            ? '/payments?user_id=${Uri.encodeComponent(widget.userId!)}'
+            : '/payments');
+    adminNavigate(
       ref,
       '/members/$userId?from=${Uri.encodeComponent(from)}',
     );
@@ -143,6 +152,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // CMS-01-03 — 복귀는 브라우저(크롬) 뒤로가기. 커스텀 뒤로가기 UI 없음.
           if (widget.userId != null) ...[
             UserFilterBanner(
               userId: widget.userId!,

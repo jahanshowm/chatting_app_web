@@ -1,5 +1,5 @@
 ---
-description: 관리자 CMS(adminchat.kr) 배포 — "어드민 배포" 요청 시 즉시 실행
+description: 관리자 CMS 배포 — QA(admin-dev) / 운영(adminchat) 경로별 배포
 alwaysApply: true
 ---
 
@@ -7,55 +7,56 @@ alwaysApply: true
 
 사용자가 **어드민 배포**, **관리자 페이지 배포**, **adminchat 배포** 등을 요청하면 아래를 **질문 없이** 실행한다.
 
-## 인프라 (고정값)
+**한 번에 API+Web을 묶는 deploy-all 스크립트는 없다.** QA·운영을 각각 배포한다.
 
-| 항목 | 값 |
-|------|-----|
-| 도메인 | `adminchat.kr` |
-| 서버 SSH | `ubuntu@13.209.176.251` |
-| Admin Web 경로 | `/var/www/adminchat` |
-| Backend 경로 | `/opt/randomchat_back` |
-| API URL | `https://adminchat.kr` (Apache `/api` 프록시 — 서버 담당) |
-| Backend PORT | `3001` |
+## 환경 (두 대만)
 
-설정 파일: `randomchat_admin/deploy/deploy.config`
+| 환경 | 도메인 | SSH | Web 경로 | API |
+|------|--------|-----|----------|-----|
+| 운영 | `adminchat.kr` | `root@3.35.204.151` | `/home/users/adminchat/www` | `/home/users/adminchat/api` :3001 (`adminchat-back`) |
+| QA | `admin-dev.adminchat.kr` | `root@chat-test.inp.kr` | `/home/users/admin-dev/www` | chat-test `:3001` (`deploy-chat-test.sh`) |
 
-## 배포 명령 (에이전트가 터미널에서 실행)
+## 배포 명령
 
-### 전체 배포 (권장 — API + Admin Web)
+### 운영 Web
 ```bash
 cd /Users/wogks/Desktop/showm/randomchat_project/randomchat_admin
-./deploy/deploy-all.sh
+./deploy/deploy-adminchat.sh
 ```
 
-### Admin Web만
-```bash
-cd /Users/wogks/Desktop/showm/randomchat_project/randomchat_admin
-./deploy/deploy-admin.sh
-```
-
-### Backend + migration만
+### 운영 API
 ```bash
 cd /Users/wogks/Desktop/showm/randomchat_project/randomchat_back
-./deploy/deploy-backend.sh
+./deploy/deploy-adminchat-api.sh
 ```
+
+### QA Web
+```bash
+cd /Users/wogks/Desktop/showm/randomchat_project/randomchat_admin
+./deploy/deploy-admin-dev.sh
+```
+
+### QA API
+```bash
+cd /Users/wogks/Desktop/showm/randomchat_project/randomchat_back
+./deploy/deploy-chat-test.sh
+```
+
+둘 다 요청되면 **API → Web** 순으로 각각 실행한다.
 
 ## 에이전트 행동 규칙
 
 1. **커밋/푸시는 사용자가 요청할 때만** — 배포만 수행
-2. 배포 전 `deploy/deploy.config` SSH·도메인 확인
-3. Admin Web 빌드 시 `.env.build.*` → `.env` 복사 (스크립트가 처리)
-4. SSH 실패 시: 22번 포트·보안그룹·키 확인 안내, 스크립트·설정은 그대로 유지
-5. Backend 배포 시 서버 `.env`의 `API_BASE_URL=https://adminchat.kr`, `PORT=3001`, `DB_SYNC=false` 필요
-6. 배포 완료 후 URL 보고: `https://adminchat.kr`
+2. 배포 전 해당 `deploy.config*` SSH·도메인·경로 확인
+3. Web 빌드 시 `.env.build.*` → `.env` 복사 (스크립트가 처리)
+4. SSH 실패 시: 22번 포트·보안그룹·키 확인 안내
+5. 운영 Backend: `PORT=3001`, `API_BASE_URL=https://adminchat.kr`, `DB_SYNC=false`
+6. `randomchat.kr` Web 경로로 admin 배포 금지
+7. 배포 완료 후 URL 보고
 
 ## 관련 파일
 
-- `randomchat_admin/deploy/deploy-all.sh` — 원클릭 전체 배포
-- `randomchat_back/deploy/deploy-backend.sh` — NestJS + migration
-- `randomchat_admin/.env.build.adminchat` — `API_BASE_URL=https://adminchat.kr`
-
-## 프로젝트 경로
-
-- Admin: `randomchat_admin/`
-- Backend: `randomchat_back/`
+- `deploy/deploy-adminchat.sh` / `deploy.config` — 운영 Web
+- `deploy/deploy-admin-dev.sh` / `deploy.config.admin-dev` — QA Web
+- `randomchat_back/deploy/deploy-adminchat-api.sh` — 운영 API
+- `randomchat_back/deploy/deploy-chat-test.sh` — QA API

@@ -109,16 +109,52 @@ class _SidebarBodyState extends State<_SidebarBody> {
   void didUpdateWidget(_SidebarBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.currentPath != widget.currentPath) {
-      _syncExpanded(widget.currentPath);
+      final before = Set<String>.from(_expanded);
+      _syncExpanded(
+        widget.currentPath,
+        previousPath: oldWidget.currentPath,
+      );
+      if (!_setEquals(before, _expanded)) {
+        setState(() {});
+      }
     }
   }
 
-  void _syncExpanded(String path) {
+  void _syncExpanded(String path, {String? previousPath}) {
+    // DAS-01 — 다른 섹션으로 이동할 때만 해당 섹션을 연다.
+    // 같은 섹션 내 이동(상세 등)에서는 사용자가 닫아 둔 상태를 유지.
+    String? matched;
     for (final section in adminMenuSections) {
       if (section.items.length > 1 && section.matchesPath(path)) {
-        _expanded.add(section.label);
+        matched = section.label;
+        break;
       }
     }
+    if (matched == null) return;
+
+    String? prevMatched;
+    if (previousPath != null) {
+      for (final section in adminMenuSections) {
+        if (section.items.length > 1 && section.matchesPath(previousPath)) {
+          prevMatched = section.label;
+          break;
+        }
+      }
+    }
+
+    if (prevMatched == matched) return;
+
+    _expanded
+      ..clear()
+      ..add(matched);
+  }
+
+  bool _setEquals(Set<String> a, Set<String> b) {
+    if (a.length != b.length) return false;
+    for (final v in a) {
+      if (!b.contains(v)) return false;
+    }
+    return true;
   }
 
   bool _isSelected(AdminMenuItem item) {
@@ -208,22 +244,23 @@ class _SidebarBodyState extends State<_SidebarBody> {
                   else ...[
                     _SidebarSectionHeader(
                       label: section.label,
-                      expanded: _expanded.contains(section.label) || _sectionActive(section),
+                      expanded: _expanded.contains(section.label),
                       active: _sectionActive(section),
                       onTap: () {
+                        // DAS-01 — 한 번의 클릭으로 열기/닫기 (active여도 강제 고정 금지)
+                        final wasOpen = _expanded.contains(section.label);
                         setState(() {
-                          if (_expanded.contains(section.label)) {
-                            _expanded.remove(section.label);
-                          } else {
+                          _expanded.clear();
+                          if (!wasOpen) {
                             _expanded.add(section.label);
                           }
                         });
-                        if (!_sectionActive(section)) {
+                        if (!wasOpen && !_sectionActive(section)) {
                           widget.onNavigate(section.items.first.path);
                         }
                       },
                     ),
-                    if (_expanded.contains(section.label) || _sectionActive(section))
+                    if (_expanded.contains(section.label))
                       for (final item in section.items)
                         _SidebarSubItem(
                           label: item.label,

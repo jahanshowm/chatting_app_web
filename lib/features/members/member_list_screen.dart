@@ -129,7 +129,8 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
   String get _listPath => _tab == 'withdrawn' ? '/members/withdrawn' : '/members/new';
 
   void _openDetail(String id) {
-    adminNavigateReplace(
+    // CMS-02 — push로 목록←상세 히스토리 유지
+    adminNavigate(
       ref,
       '/members/$id?from=${Uri.encodeComponent(_listPath)}',
     );
@@ -175,12 +176,17 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
           ),
         ],
       ),
-      summary: Row(
-        children: [
-          const Spacer(),
-          DeleteActionButton(selectedCount: _selected.length, onDelete: _deleteSelected),
-        ],
-      ),
+      summary: _tab == 'withdrawn'
+          ? null
+          : Row(
+              children: [
+                const Spacer(),
+                DeleteActionButton(
+                  selectedCount: _selected.length,
+                  onDelete: _deleteSelected,
+                ),
+              ],
+            ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : AdminListPanel(
@@ -198,21 +204,23 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                         minWidth: 960,
                         headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
                         columns: [
-                          DataColumn2(
-                            label: Checkbox(
-                              value: _selected.length == items.length && items.isNotEmpty,
-                              onChanged: (v) {
-                                setState(() {
-                                  if (v == true) {
-                                    _selected.addAll(items.map((e) => e['id'] as String));
-                                  } else {
-                                    _selected.clear();
-                                  }
-                                });
-                              },
+                          // CMS-01-03 — 탈퇴회원: 체크박스·삭제 제거
+                          if (_tab != 'withdrawn')
+                            DataColumn2(
+                              label: Checkbox(
+                                value: _selected.length == items.length && items.isNotEmpty,
+                                onChanged: (v) {
+                                  setState(() {
+                                    if (v == true) {
+                                      _selected.addAll(items.map((e) => e['id'] as String));
+                                    } else {
+                                      _selected.clear();
+                                    }
+                                  });
+                                },
+                              ),
+                              size: ColumnSize.S,
                             ),
-                            size: ColumnSize.S,
-                          ),
                           ..._columns.map((c) => DataColumn2(label: Text(c.$2))),
                         ],
                         rows: items.map((row) {
@@ -223,26 +231,28 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                                 : () => _openDetail(id),
                             selected: _selected.contains(id),
                             cells: [
-                              DataCell(Checkbox(
-                                value: _selected.contains(id),
-                                onChanged: (v) {
-                                  setState(() {
-                                    if (v == true) {
-                                      _selected.add(id);
-                                    } else {
-                                      _selected.remove(id);
-                                    }
-                                  });
-                                },
-                              )),
+                              if (_tab != 'withdrawn')
+                                DataCell(Checkbox(
+                                  value: _selected.contains(id),
+                                  onChanged: (v) {
+                                    setState(() {
+                                      if (v == true) {
+                                        _selected.add(id);
+                                      } else {
+                                        _selected.remove(id);
+                                      }
+                                    });
+                                  },
+                                )),
                               ..._columns.map((c) {
                                 if (_tab == 'withdrawn' && c.$1 == 'inquiry_summary') {
                                   final count = row[c.$1];
+                                  // CMS-01-03 — 복귀 시 탈퇴회원 리스트로
                                   return DataCell(
                                     TextButton(
-                                      onPressed: () => adminNavigateReplace(
+                                      onPressed: () => adminNavigate(
                                         ref,
-                                        '/inquiries/withdrawn?user_id=${Uri.encodeComponent(id)}',
+                                        '/inquiries/withdrawn?user_id=${Uri.encodeComponent(id)}&from=${Uri.encodeComponent('/members/withdrawn')}',
                                       ),
                                       child: Text(count == '-' ? '내역보기' : '내역보기 ($count)'),
                                     ),
@@ -252,9 +262,9 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                                   final count = row[c.$1];
                                   return DataCell(
                                     TextButton(
-                                      onPressed: () => adminNavigateReplace(
+                                      onPressed: () => adminNavigate(
                                         ref,
-                                        '/payments?user_id=${Uri.encodeComponent(id)}',
+                                        '/payments?user_id=${Uri.encodeComponent(id)}&from=${Uri.encodeComponent('/members/withdrawn')}',
                                       ),
                                       child: Text(count == '-' ? '내역보기' : '내역보기 ($count)'),
                                     ),

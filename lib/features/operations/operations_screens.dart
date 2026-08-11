@@ -113,7 +113,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
           Row(
             children: [
               ElevatedButton(
-                onPressed: () => adminNavigateReplace(ref, '/operations/popups/new'),
+                onPressed: () => adminNavigate(ref, '/operations/popups/new'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.periodSelected,
                   foregroundColor: Colors.white,
@@ -230,7 +230,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                                   DataCell(
                                     TextButton(
                                       onPressed: () =>
-                                          adminNavigateReplace(ref, '/operations/popups/$id/edit'),
+                                          adminNavigate(ref, '/operations/popups/$id/edit'),
                                       child: const Text('수정'),
                                     ),
                                   ),
@@ -319,13 +319,19 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이미지를 선택해주세요.')));
       return;
     }
+    // NTC-01-01 — 시작일 > 종료일 등록 금지
+    if (!DateRangeBar.isValidRange(_start, _end)) {
+      DateRangeBar.showInvalidRangeMessage(context);
+      return;
+    }
     setState(() => _loading = true);
     try {
+      // NTC-01-01 — YYYY-MM-DD로 보내 KST 당일 범위(시작 00:00~종료 23:59)로 저장
       final form = FormData.fromMap({
         'title': _title.text.trim(),
         'link_url': _link.text.trim(),
-        'start_at': _start.toIso8601String(),
-        'end_at': _end.toIso8601String(),
+        'start_at': DateRangeBar.formatApi(_start),
+        'end_at': DateRangeBar.formatApi(_end),
         'is_active': _active,
         if (_image != null)
           'image': MultipartFile.fromBytes(_image!.bytes!, filename: _image!.name),
@@ -343,7 +349,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
           ),
         ),
       );
-      adminNavigateReplace(ref, '/operations/popups');
+      adminNavigateBack(ref, '/operations/popups');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
@@ -364,7 +370,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
       if (ok != true) return;
     }
     if (!mounted) return;
-    adminNavigateReplace(ref, '/operations/popups');
+    adminNavigateBack(ref, '/operations/popups');
   }
 
   @override
@@ -389,7 +395,12 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
                     firstDate: DateTime(2020),
                     lastDate: DateTime(2100),
                   );
-                  if (d != null) setState(() => _start = d);
+                  if (d == null) return;
+                  if (!DateRangeBar.isValidRange(d, _end)) {
+                    if (context.mounted) DateRangeBar.showInvalidRangeMessage(context);
+                    return;
+                  }
+                  setState(() => _start = d);
                 }, child: Text('시작 ${DateRangeBar.formatDisplay(_start)}')),
                 const SizedBox(width: 12),
                 OutlinedButton(onPressed: () async {
@@ -399,10 +410,24 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
                     firstDate: DateTime(2020),
                     lastDate: DateTime(2100),
                   );
-                  if (d != null) setState(() => _end = d);
+                  if (d == null) return;
+                  if (!DateRangeBar.isValidRange(_start, d)) {
+                    if (context.mounted) DateRangeBar.showInvalidRangeMessage(context);
+                    return;
+                  }
+                  setState(() => _end = d);
                 }, child: Text('종료 ${DateRangeBar.formatDisplay(_end)}')),
               ],
             ),
+            // NTC-01-01 — 시작>종료 인라인 에러 (DateRangeBar와 동일 UX)
+            if (!DateRangeBar.isValidRange(_start, _end))
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  '시작일은 종료일보다 미래일 수 없습니다.',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
             _opsSectionTitle('제목'),
             TextField(
               controller: _title,
@@ -486,7 +511,9 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  onPressed: _loading ? null : _submit,
+                  onPressed: (_loading || !DateRangeBar.isValidRange(_start, _end))
+                      ? null
+                      : _submit,
                   child: Text(_loading ? '저장 중...' : (isEdit ? '수정' : '등록')),
                 ),
               ],
@@ -619,7 +646,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
               OutlinedButton(onPressed: _resetSearch, child: const Text('초기화')),
               const SizedBox(width: 12),
               ElevatedButton(
-                onPressed: () => adminNavigateReplace(ref, '/operations/fcm/new'),
+                onPressed: () => adminNavigate(ref, '/operations/fcm/new'),
                 child: const Text('FCM 발송'),
               ),
             ],
@@ -677,7 +704,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                             }
                           }
                           return DataRow2(
-                            onTap: () => adminNavigateReplace(ref, '/operations/fcm/$id'),
+                            onTap: () => adminNavigate(ref, '/operations/fcm/$id'),
                             cells: [
                               DataCell(Checkbox(
                                 value: _selected.contains(id),
@@ -881,6 +908,7 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
         'scheduled_at': _scheduledAt!.toIso8601String(),
     };
     final query = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+    // 위자드 단계 전환은 replace — 브라우저 뒤로가기 시 목록으로
     adminNavigateReplace(ref, '$targetPath?$query');
   }
 
@@ -1020,7 +1048,7 @@ class _FcmAllSendFormScreenState extends ConsumerState<FcmAllSendFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('발송이 완료되었습니다.')),
         );
-        adminNavigateReplace(ref, '/operations/fcm');
+        adminNavigateBack(ref, '/operations/fcm');
       }
     } catch (e) {
       if (mounted) {
@@ -1139,7 +1167,7 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('발송이 완료되었습니다.')),
         );
-        adminNavigateReplace(ref, '/operations/fcm');
+        adminNavigateBack(ref, '/operations/fcm');
       }
     } catch (e) {
       if (mounted) {
@@ -1310,7 +1338,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
           Row(
             children: [
               ElevatedButton(
-                onPressed: () => adminNavigateReplace(ref, '/operations/notices/new'),
+                onPressed: () => adminNavigate(ref, '/operations/notices/new'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.periodSelected,
                   foregroundColor: Colors.white,
@@ -1407,7 +1435,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                               DataCell(Text('${row['date'] ?? '-'}')),
                               DataCell(
                                 TextButton(
-                                  onPressed: () => adminNavigateReplace(ref, '/operations/notices/$id/edit'),
+                                  onPressed: () => adminNavigate(ref, '/operations/notices/$id/edit'),
                                   child: const Text('수정'),
                                 ),
                               ),
@@ -1493,7 +1521,7 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       if (ok != true) return;
     }
     if (!mounted) return;
-    adminNavigateReplace(ref, '/operations/notices');
+    adminNavigateBack(ref, '/operations/notices');
   }
 
   Future<void> _submit() async {
@@ -1522,7 +1550,7 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(widget.noticeId == null ? '정상적으로 등록되었습니다.' : '정상적으로 수정되었습니다.')),
       );
-      adminNavigateReplace(ref, '/operations/notices');
+      adminNavigateBack(ref, '/operations/notices');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {

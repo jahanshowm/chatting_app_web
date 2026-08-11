@@ -1,25 +1,48 @@
 #!/usr/bin/env bash
-# Admin Web — Flutter 빌드 + 정적 파일 rsync (Apache/nginx/SSL 미포함)
+# Admin Web — Flutter 빌드 + rsync (Apache/SSL 미포함)
+# 래퍼만 사용:
+#   ./deploy/deploy-adminchat.sh   → 운영 adminchat.kr
+#   ./deploy/deploy-admin-dev.sh   → QA admin-dev.adminchat.kr
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CONFIG="${DEPLOY_CONFIG:-$ROOT/deploy/deploy.config}"
 
-if [[ -f "$CONFIG" ]]; then
-  # shellcheck disable=SC1090
-  source "$CONFIG"
+if [[ -z "${DEPLOY_CONFIG:-}" ]]; then
+  echo "ERROR: deploy-admin.sh 직접 실행 금지. 래퍼를 사용하세요:"
+  echo "  ./deploy/deploy-adminchat.sh   # 운영"
+  echo "  ./deploy/deploy-admin-dev.sh   # QA"
+  exit 1
+fi
+if [[ ! -f "$DEPLOY_CONFIG" ]]; then
+  echo "ERROR: DEPLOY_CONFIG 없음: $DEPLOY_CONFIG"
+  exit 1
 fi
 
-REMOTE="${1:-${DEPLOY_SSH:-root@3.35.204.151}}"
-REMOTE_WEB_DIR="${REMOTE_WEB_DIR:-/var/www/adminchat}"
-ENV_BUILD="${ENV_BUILD_FILE:-$ROOT/.env.build.adminchat}"
-DEPLOY_DOMAIN="${DEPLOY_DOMAIN:-adminchat.kr}"
+# shellcheck disable=SC1090
+source "$DEPLOY_CONFIG"
+
+REMOTE="${DEPLOY_SSH:?DEPLOY_SSH 필요}"
+REMOTE_WEB_DIR="${REMOTE_WEB_DIR:?REMOTE_WEB_DIR 필요}"
+ENV_BUILD="${ENV_BUILD_FILE:?ENV_BUILD_FILE 필요}"
+DEPLOY_DOMAIN="${DEPLOY_DOMAIN:?DEPLOY_DOMAIN 필요}"
+
+# QA·운영만 허용
+case "$REMOTE_WEB_DIR:$DEPLOY_DOMAIN" in
+  /home/users/adminchat/www:adminchat.kr) ;;
+  /home/users/admin-dev/www:admin-dev.adminchat.kr) ;;
+  *)
+    echo "ERROR: 허용되지 않은 Web 경로/도메인: $REMOTE_WEB_DIR / $DEPLOY_DOMAIN"
+    echo "  허용: 운영 /home/users/adminchat/www (adminchat.kr)"
+    echo "       QA   /home/users/admin-dev/www (admin-dev.adminchat.kr)"
+    exit 1
+    ;;
+esac
 
 echo "==> 빌드용 .env 적용 ($ENV_BUILD)"
 cp "$ENV_BUILD" "$ROOT/.env"
 
 if [[ "${SKIP_WEB_BUILD:-0}" != "1" ]]; then
-  echo "==> Flutter Web 빌드 (API: ${API_BASE_URL:-https://adminchat.kr})"
+  echo "==> Flutter Web 빌드 (API: ${API_BASE_URL})"
   cd "$ROOT"
   flutter pub get
   flutter build web --release

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# admin-dev.adminchat.kr — deploy-admin.sh + deploy.config.admin-dev
+# QA — admin-dev.adminchat.kr Web (/home/users/admin-dev/www)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

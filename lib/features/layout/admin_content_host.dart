@@ -44,7 +44,10 @@ class AdminContentHost extends StatelessWidget {
     }
 
     if (segments.first == 'payments') {
-      return PaymentListScreen(userId: uri.queryParameters['user_id']);
+      return PaymentListScreen(
+        userId: uri.queryParameters['user_id'],
+        fromPath: uri.queryParameters['from'],
+      );
     }
 
     if (segments.first == 'inquiries') {
@@ -55,6 +58,7 @@ class AdminContentHost extends StatelessWidget {
       return InquiryListScreen(
         withdrawn: segments.length >= 2 && segments[1] == 'withdrawn',
         userId: uri.queryParameters['user_id'],
+        fromPath: uri.queryParameters['from'],
       );
     }
 
