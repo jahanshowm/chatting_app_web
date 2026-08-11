@@ -7,32 +7,59 @@ import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
+import 'package:randomchat_admin/shared/utils/admin_list_query.dart';
 import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 
 class MemberReportBlockScreen extends ConsumerStatefulWidget {
-  const MemberReportBlockScreen({super.key, this.initialTab = 'report'});
+  const MemberReportBlockScreen({
+    super.key,
+    required this.routePath,
+    this.initialTab = 'report',
+  });
 
+  final String routePath;
   final String initialTab;
 
   @override
-  ConsumerState<MemberReportBlockScreen> createState() => _MemberReportBlockScreenState();
+  ConsumerState<MemberReportBlockScreen> createState() =>
+      _MemberReportBlockScreenState();
 }
 
-class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScreen> {
+class _MemberReportBlockScreenState
+    extends ConsumerState<MemberReportBlockScreen> {
   late String _tab = widget.initialTab == 'block' ? 'block' : 'report';
   final _keyword = TextEditingController();
-  String _filter = 'all';
-  int _page = 1;
+  late String _filter;
+  late int _page;
   PaginatedResult<Map<String, dynamic>>? _data;
   final Set<String> _selected = {};
   bool _loading = true;
 
-  AdminScreenSpec get _spec => _tab == 'block' ? memberBlockSpec : memberReportSpec;
+  AdminScreenSpec get _spec =>
+      _tab == 'block' ? memberBlockSpec : memberReportSpec;
+
+  String get _basePath =>
+      _tab == 'block' ? '/members/blocks' : '/members/reports';
+
+  AdminListQuery get _query => AdminListQuery(
+        start: AdminListQuery.today(),
+        end: AdminListQuery.today(),
+        filter: _filter,
+        keyword: _keyword.text,
+        page: _page,
+        persistDates: false,
+      );
+
+  String get _listPathWithQuery => _query.toPath(_basePath);
 
   @override
   void initState() {
     super.initState();
+    _applyQuery(
+      AdminListQuery.fromPath(widget.routePath, persistDates: false),
+      syncPath: false,
+    );
     _load();
   }
 
@@ -41,10 +68,20 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialTab != widget.initialTab) {
       _tab = widget.initialTab == 'block' ? 'block' : 'report';
-      _filter = 'all';
-      _page = 1;
-      _keyword.clear();
+      _applyQuery(
+        AdminListQuery.fromPath(widget.routePath, persistDates: false),
+        syncPath: false,
+      );
       _load();
+      return;
+    }
+    if (oldWidget.routePath != widget.routePath) {
+      final incoming =
+          AdminListQuery.fromPath(widget.routePath, persistDates: false);
+      if (!incoming.sameAs(_query)) {
+        _applyQuery(incoming, syncPath: false);
+        _load();
+      }
     }
   }
 
@@ -52,6 +89,19 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
   void dispose() {
     _keyword.dispose();
     super.dispose();
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    _filter = q.filter;
+    _page = q.page;
+    if (_keyword.text != q.keyword) _keyword.text = q.keyword;
+    if (syncPath) syncAdminListPath(ref, _basePath, _query);
+  }
+
+  void _persistAndLoad({bool resetPage = false}) {
+    if (resetPage) _page = 1;
+    syncAdminListPath(ref, _basePath, _query);
+    _load();
   }
 
   Future<void> _load() async {
@@ -72,7 +122,8 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -84,7 +135,9 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
       message: '선택한 ${_selected.length}개의 항목을 삭제하시겠습니까?',
     );
     if (ok != true) return;
-    await ref.read(adminApiProvider).deleteMembers(tab: _tab, ids: _selected.toList());
+    await ref
+        .read(adminApiProvider)
+        .deleteMembers(tab: _tab, ids: _selected.toList());
     _load();
   }
 
@@ -117,7 +170,7 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
     if (userId == null || userId.isEmpty) return;
     adminNavigate(
       ref,
-      '/members/$userId?from=${Uri.encodeComponent('/members/report-block')}',
+      '/members/$userId?from=${Uri.encodeComponent(_listPathWithQuery)}',
     );
   }
 
@@ -127,7 +180,7 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
       _page = 1;
       _keyword.clear();
     });
-    _load();
+    _persistAndLoad();
   }
 
   @override
@@ -153,6 +206,7 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
                 _page = 1;
                 _keyword.clear();
               });
+              syncAdminListPath(ref, _basePath, _query);
               _load();
             },
           ),
@@ -172,10 +226,7 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
             hint: spec.searchHint,
             useSearchIcon: _tab == 'block',
             onFilterChanged: (v) => setState(() => _filter = v),
-            onSearch: () {
-              setState(() => _page = 1);
-              _load();
-            },
+            onSearch: () => _persistAndLoad(resetPage: true),
             onReset: _resetSearch,
           ),
         ],
@@ -183,7 +234,10 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
       summary: Row(
         children: [
           const Spacer(),
-          DeleteActionButton(selectedCount: _selected.length, onDelete: _deleteSelected),
+          DeleteActionButton(
+            selectedCount: _selected.length,
+            onDelete: _deleteSelected,
+          ),
         ],
       ),
       child: _loading
@@ -201,15 +255,19 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
                             columnSpacing: 12,
                             horizontalMargin: 12,
                             minWidth: 960,
-                            headingRowColor: WidgetStateProperty.all(AppColors.tableHeader),
+                            headingRowColor:
+                                WidgetStateProperty.all(AppColors.tableHeader),
                             columns: [
                               DataColumn2(
                                 label: Checkbox(
-                                  value: _selected.length == items.length && items.isNotEmpty,
+                                  value: _selected.length == items.length &&
+                                      items.isNotEmpty,
                                   onChanged: (v) {
                                     setState(() {
                                       if (v == true) {
-                                        _selected.addAll(items.map((e) => e['id'] as String));
+                                        _selected.addAll(
+                                          items.map((e) => e['id'] as String),
+                                        );
                                       } else {
                                         _selected.clear();
                                       }
@@ -218,7 +276,8 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
                                 ),
                                 size: ColumnSize.S,
                               ),
-                              ..._columns.map((c) => DataColumn2(label: Text(c.$2))),
+                              ..._columns
+                                  .map((c) => DataColumn2(label: Text(c.$2))),
                             ],
                             rows: items.map((row) {
                               final id = row['id'] as String;
@@ -239,9 +298,13 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
                                   )),
                                   ..._columns.map((c) {
                                     if (c.$1 == 'gender') {
-                                      return DataCell(GenderCellText('${row[c.$1] ?? '-'}'));
+                                      return DataCell(
+                                        GenderCellText('${row[c.$1] ?? '-'}'),
+                                      );
                                     }
-                                    return DataCell(Text('${row[c.$1] ?? '-'}'));
+                                    return DataCell(
+                                      Text('${row[c.$1] ?? '-'}'),
+                                    );
                                   }),
                                 ],
                               );
@@ -254,7 +317,7 @@ class _MemberReportBlockScreenState extends ConsumerState<MemberReportBlockScree
                           totalCount: totalCount,
                           onPageChanged: (p) {
                             setState(() => _page = p);
-                            _load();
+                            _persistAndLoad();
                           },
                         ),
                       ],

@@ -178,15 +178,19 @@ class _SidebarBodyState extends State<_SidebarBody> {
         return true;
       }
     }
-    // INQ-01-02 — 문의 상세는 ?from= 기준으로 활동/탈퇴 메뉴 유지
+    // INQ-01-02 — 문의 상세는 ?from= 기준으로 활동/탈퇴 메뉴 유지 (날짜 쿼리 포함 가능)
     if (path.startsWith('/inquiries/') &&
         path != '/inquiries/active' &&
         path != '/inquiries/withdrawn') {
+      final fromPath = from == null
+          ? ''
+          : Uri.parse(from.startsWith('/') ? from : '/$from').path;
+      final fromWithdrawn = fromPath == '/inquiries/withdrawn';
       if (item.path == '/inquiries/withdrawn') {
-        return from == '/inquiries/withdrawn';
+        return fromWithdrawn;
       }
       if (item.path == '/inquiries/active') {
-        return from != '/inquiries/withdrawn';
+        return !fromWithdrawn;
       }
     }
     return path.startsWith('${item.path}/');

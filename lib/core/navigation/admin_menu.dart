@@ -45,15 +45,19 @@ class AdminMenuSection {
         return menuPath == '/members/new';
       }
     }
-    // INQ-01-02 — 문의 상세는 from 쿼리로 활동/탈퇴 섹션 매칭
+    // INQ-01-02 — 문의 상세는 from 쿼리로 활동/탈퇴 섹션 매칭 (날짜 쿼리 포함 가능)
     if (path.startsWith('/inquiries/') &&
         path != '/inquiries/active' &&
         path != '/inquiries/withdrawn') {
+      final fromPath = from == null
+          ? ''
+          : Uri.parse(from.startsWith('/') ? from : '/$from').path;
+      final fromWithdrawn = fromPath == '/inquiries/withdrawn';
       if (menuPath == '/inquiries/withdrawn') {
-        return from == '/inquiries/withdrawn';
+        return fromWithdrawn;
       }
       if (menuPath == '/inquiries/active') {
-        return from != '/inquiries/withdrawn';
+        return !fromWithdrawn;
       }
     }
     return path.startsWith('$menuPath/') ||
@@ -137,7 +141,11 @@ AdminBreadcrumb adminBreadcrumbForPath(String path) {
     if (p.startsWith('/inquiries/') &&
         p != '/inquiries/active' &&
         p != '/inquiries/withdrawn') {
-      final fromWithdrawn = uri.queryParameters['from'] == '/inquiries/withdrawn';
+      final fromRaw = uri.queryParameters['from'];
+      final fromPath = fromRaw == null
+          ? ''
+          : Uri.parse(fromRaw.startsWith('/') ? fromRaw : '/$fromRaw').path;
+      final fromWithdrawn = fromPath == '/inquiries/withdrawn';
       return AdminBreadcrumb(
         section: '문의내역',
         item: fromWithdrawn ? '탈퇴 회원' : '문의 답변',
@@ -181,7 +189,7 @@ void adminNavigateReplace(WidgetRef ref, String path) {
   ref.read(adminShellPathProvider.notifier).setPathReplace(path);
 }
 
-/// 「목록으로」— 가능하면 브라우저(크롬) history.back()으로 직전 화면 복귀
+/// 「목록으로」— CMS 스택 즉시 pop (+ 웹이면 history.back 동기화)
 void adminNavigateBack(WidgetRef ref, String fallbackPath) {
   ref.read(adminShellPathProvider.notifier).navigateBackOr(fallbackPath);
 }

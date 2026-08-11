@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/shared/utils/admin_date_format.dart';
+import 'package:randomchat_admin/shared/utils/admin_list_query.dart';
 import 'package:randomchat_admin/shared/utils/resolve_admin_media_url.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
@@ -30,7 +31,9 @@ Widget _opsSectionTitle(String title) {
 }
 
 class PopupListScreen extends ConsumerStatefulWidget {
-  const PopupListScreen({super.key});
+  const PopupListScreen({super.key, required this.routePath});
+
+  final String routePath;
 
   @override
   ConsumerState<PopupListScreen> createState() => _PopupListScreenState();
@@ -40,20 +43,63 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
   PaginatedResult<Map<String, dynamic>>? _data;
   final Set<String> _selected = {};
   bool _loading = true;
-  int _page = 1;
-  String _filter = 'all';
+  late int _page;
+  late String _filter;
   final _keyword = TextEditingController();
+
+  static const _basePath = '/operations/popups';
+
+  AdminListQuery get _query => AdminListQuery(
+        start: AdminListQuery.today(),
+        end: AdminListQuery.today(),
+        filter: _filter,
+        keyword: _keyword.text,
+        page: _page,
+        persistDates: false,
+      );
+
+  String get _listPathWithQuery => _query.toPath(_basePath);
 
   @override
   void initState() {
     super.initState();
+    _applyQuery(
+      AdminListQuery.fromPath(widget.routePath, persistDates: false),
+      syncPath: false,
+    );
     _load();
+  }
+
+  @override
+  void didUpdateWidget(PopupListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routePath != widget.routePath) {
+      final incoming =
+          AdminListQuery.fromPath(widget.routePath, persistDates: false);
+      if (!incoming.sameAs(_query)) {
+        _applyQuery(incoming, syncPath: false);
+        _load();
+      }
+    }
   }
 
   @override
   void dispose() {
     _keyword.dispose();
     super.dispose();
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    _filter = q.filter;
+    _page = q.page;
+    if (_keyword.text != q.keyword) _keyword.text = q.keyword;
+    if (syncPath) syncAdminListPath(ref, _basePath, _query);
+  }
+
+  void _persistAndLoad({bool resetPage = false}) {
+    if (resetPage) _page = 1;
+    syncAdminListPath(ref, _basePath, _query);
+    _load();
   }
 
   Future<void> _load() async {
@@ -83,7 +129,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
       _page = 1;
       _keyword.clear();
     });
-    _load();
+    _persistAndLoad();
   }
 
   Future<void> _deleteSelected() async {
@@ -113,7 +159,10 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
           Row(
             children: [
               ElevatedButton(
-                onPressed: () => adminNavigate(ref, '/operations/popups/new'),
+                onPressed: () => adminNavigate(
+                  ref,
+                  '/operations/popups/new?from=${Uri.encodeComponent(_listPathWithQuery)}',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.periodSelected,
                   foregroundColor: Colors.white,
@@ -130,10 +179,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
             hint: popupListSpec.searchHint,
             useSearchIcon: true,
             onFilterChanged: (v) => setState(() => _filter = v),
-            onSearch: () {
-              setState(() => _page = 1);
-              _load();
-            },
+            onSearch: () => _persistAndLoad(resetPage: true),
             onReset: _resetSearch,
           ),
         ],
@@ -229,8 +275,10 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                                   ),
                                   DataCell(
                                     TextButton(
-                                      onPressed: () =>
-                                          adminNavigate(ref, '/operations/popups/$id/edit'),
+                                      onPressed: () => adminNavigate(
+                                        ref,
+                                        '/operations/popups/$id/edit?from=${Uri.encodeComponent(_listPathWithQuery)}',
+                                      ),
                                       child: const Text('수정'),
                                     ),
                                   ),
@@ -245,7 +293,7 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
                           totalCount: totalCount,
                           onPageChanged: (p) {
                             setState(() => _page = p);
-                            _load();
+                            _persistAndLoad();
                           },
                         ),
                       ],
@@ -256,9 +304,14 @@ class _PopupListScreenState extends ConsumerState<PopupListScreen> {
 }
 
 class PopupFormScreen extends ConsumerStatefulWidget {
-  const PopupFormScreen({super.key, this.popupId});
+  const PopupFormScreen({
+    super.key,
+    this.popupId,
+    this.listPath = '/operations/popups',
+  });
 
   final String? popupId;
+  final String listPath;
 
   @override
   ConsumerState<PopupFormScreen> createState() => _PopupFormScreenState();
@@ -349,7 +402,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
           ),
         ),
       );
-      adminNavigateBack(ref, '/operations/popups');
+      adminNavigateBack(ref, widget.listPath);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
@@ -370,7 +423,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
       if (ok != true) return;
     }
     if (!mounted) return;
-    adminNavigateBack(ref, '/operations/popups');
+    adminNavigateBack(ref, widget.listPath);
   }
 
   @override
@@ -384,7 +437,7 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const AdminDetailBackBar(backPath: '/operations/popups'),
+            AdminDetailBackBar(backPath: widget.listPath),
             _opsSectionTitle('노출기간'),
             Row(
               children: [
@@ -526,31 +579,75 @@ class _PopupFormScreenState extends ConsumerState<PopupFormScreen> {
 }
 
 class FcmListScreen extends ConsumerStatefulWidget {
-  const FcmListScreen({super.key});
+  const FcmListScreen({super.key, required this.routePath});
+
+  final String routePath;
 
   @override
   ConsumerState<FcmListScreen> createState() => _FcmListScreenState();
 }
 
 class _FcmListScreenState extends ConsumerState<FcmListScreen> {
-  int _page = 1;
+  late int _page;
   dynamic _data;
   bool _loading = true;
-  late DateTime _start = DateTime.now().subtract(const Duration(days: 30));
-  late DateTime _end = DateTime.now();
+  late DateTime _start;
+  late DateTime _end;
   final _keyword = TextEditingController();
   final Set<String> _selected = {};
+
+  static const _basePath = '/operations/fcm';
+
+  AdminListQuery get _query => AdminListQuery(
+        start: _start,
+        end: _end,
+        keyword: _keyword.text,
+        page: _page,
+      );
+
+  String get _listPathWithQuery => _query.toPath(_basePath);
 
   @override
   void initState() {
     super.initState();
+    _applyQuery(
+      AdminListQuery.fromPath(widget.routePath, defaultRangeDays: 30),
+      syncPath: false,
+    );
     _load();
+  }
+
+  @override
+  void didUpdateWidget(FcmListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routePath != widget.routePath) {
+      final incoming =
+          AdminListQuery.fromPath(widget.routePath, defaultRangeDays: 30);
+      if (!incoming.sameAs(_query)) {
+        _applyQuery(incoming, syncPath: false);
+        _load();
+      }
+    }
   }
 
   @override
   void dispose() {
     _keyword.dispose();
     super.dispose();
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    _start = q.start;
+    _end = q.end;
+    _page = q.page;
+    if (_keyword.text != q.keyword) _keyword.text = q.keyword;
+    if (syncPath) syncAdminListPath(ref, _basePath, _query);
+  }
+
+  void _persistAndLoad({bool resetPage = false}) {
+    if (resetPage) _page = 1;
+    syncAdminListPath(ref, _basePath, _query);
+    _load();
   }
 
   Future<void> _load() async {
@@ -588,14 +685,14 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
   }
 
   void _resetSearch() {
-    final today = DateTime.now();
+    final today = AdminListQuery.today();
     setState(() {
       _start = today.subtract(const Duration(days: 30));
       _end = today;
       _page = 1;
       _keyword.clear();
     });
-    _load();
+    _persistAndLoad();
   }
 
   @override
@@ -617,9 +714,8 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
               setState(() {
                 _start = s;
                 _end = e;
-                _page = 1;
               });
-              _load();
+              _persistAndLoad(resetPage: true);
             },
           ),
           const SizedBox(height: 16),
@@ -629,24 +725,21 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                 child: TextField(
                   controller: _keyword,
                   decoration: const InputDecoration(hintText: '제목 검색'),
-                  onSubmitted: (_) {
-                    setState(() => _page = 1);
-                    _load();
-                  },
+                  onSubmitted: (_) => _persistAndLoad(resetPage: true),
                 ),
               ),
               const SizedBox(width: 12),
               IconButton(
-                onPressed: () {
-                  setState(() => _page = 1);
-                  _load();
-                },
+                onPressed: () => _persistAndLoad(resetPage: true),
                 icon: const Icon(Icons.search),
               ),
               OutlinedButton(onPressed: _resetSearch, child: const Text('초기화')),
               const SizedBox(width: 12),
               ElevatedButton(
-                onPressed: () => adminNavigate(ref, '/operations/fcm/new'),
+                onPressed: () => adminNavigate(
+                  ref,
+                  '/operations/fcm/new?from=${Uri.encodeComponent(_listPathWithQuery)}',
+                ),
                 child: const Text('FCM 발송'),
               ),
             ],
@@ -704,7 +797,10 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                             }
                           }
                           return DataRow2(
-                            onTap: () => adminNavigate(ref, '/operations/fcm/$id'),
+                            onTap: () => adminNavigate(
+                              ref,
+                              '/operations/fcm/$id?from=${Uri.encodeComponent(_listPathWithQuery)}',
+                            ),
                             cells: [
                               DataCell(Checkbox(
                                 value: _selected.contains(id),
@@ -743,7 +839,7 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
                       unit: '건',
                       onPageChanged: (p) {
                         setState(() => _page = p);
-                        _load();
+                        _persistAndLoad();
                       },
                     ),
                   ],
@@ -753,9 +849,14 @@ class _FcmListScreenState extends ConsumerState<FcmListScreen> {
 }
 
 class FcmDetailScreen extends ConsumerStatefulWidget {
-  const FcmDetailScreen({super.key, required this.campaignId});
+  const FcmDetailScreen({
+    super.key,
+    required this.campaignId,
+    this.listPath = '/operations/fcm',
+  });
 
   final String campaignId;
+  final String listPath;
 
   @override
   ConsumerState<FcmDetailScreen> createState() => _FcmDetailScreenState();
@@ -805,7 +906,7 @@ class _FcmDetailScreenState extends ConsumerState<FcmDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const AdminDetailBackBar(backPath: '/operations/fcm'),
+            AdminDetailBackBar(backPath: widget.listPath),
             sectionTitle('발송 상세정보'),
             Wrap(
               spacing: 24,
@@ -873,7 +974,9 @@ class _DetailTile extends StatelessWidget {
 }
 
 class FcmSendTypeScreen extends ConsumerStatefulWidget {
-  const FcmSendTypeScreen({super.key});
+  const FcmSendTypeScreen({super.key, this.listPath = '/operations/fcm'});
+
+  final String listPath;
 
   @override
   ConsumerState<FcmSendTypeScreen> createState() => _FcmSendTypeScreenState();
@@ -904,6 +1007,7 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
   void _go(String targetPath) {
     final params = <String, String>{
       'send_method': _sendMethod,
+      'from': widget.listPath,
       if (_sendMethod == 'scheduled' && _scheduledAt != null)
         'scheduled_at': _scheduledAt!.toIso8601String(),
     };
@@ -921,7 +1025,7 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const AdminDetailBackBar(backPath: '/operations/fcm'),
+            AdminDetailBackBar(backPath: widget.listPath),
             _opsSectionTitle('발송 방식'),
             DropdownButtonFormField<String>(
               initialValue: _sendMethod,
@@ -992,10 +1096,16 @@ class _FcmSendTypeScreenState extends ConsumerState<FcmSendTypeScreen> {
 }
 
 class FcmAllSendFormScreen extends ConsumerStatefulWidget {
-  const FcmAllSendFormScreen({super.key, required this.sendMethod, this.scheduledAt});
+  const FcmAllSendFormScreen({
+    super.key,
+    required this.sendMethod,
+    this.scheduledAt,
+    this.listPath = '/operations/fcm',
+  });
 
   final String sendMethod;
   final DateTime? scheduledAt;
+  final String listPath;
 
   @override
   ConsumerState<FcmAllSendFormScreen> createState() => _FcmAllSendFormScreenState();
@@ -1048,7 +1158,7 @@ class _FcmAllSendFormScreenState extends ConsumerState<FcmAllSendFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('발송이 완료되었습니다.')),
         );
-        adminNavigateBack(ref, '/operations/fcm');
+        adminNavigateBack(ref, widget.listPath);
       }
     } catch (e) {
       if (mounted) {
@@ -1068,7 +1178,7 @@ class _FcmAllSendFormScreenState extends ConsumerState<FcmAllSendFormScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const AdminDetailBackBar(backPath: '/operations/fcm/new'),
+            AdminDetailBackBar(backPath: widget.listPath),
             _opsSectionTitle('내용 작성'),
             TextField(controller: _title, decoration: const InputDecoration(labelText: '알림 제목')),
             const SizedBox(height: 12),
@@ -1091,10 +1201,16 @@ class _FcmAllSendFormScreenState extends ConsumerState<FcmAllSendFormScreen> {
 }
 
 class FcmTargetSendFormScreen extends ConsumerStatefulWidget {
-  const FcmTargetSendFormScreen({super.key, required this.sendMethod, this.scheduledAt});
+  const FcmTargetSendFormScreen({
+    super.key,
+    required this.sendMethod,
+    this.scheduledAt,
+    this.listPath = '/operations/fcm',
+  });
 
   final String sendMethod;
   final DateTime? scheduledAt;
+  final String listPath;
 
   @override
   ConsumerState<FcmTargetSendFormScreen> createState() => _FcmTargetSendFormScreenState();
@@ -1167,7 +1283,7 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('발송이 완료되었습니다.')),
         );
-        adminNavigateBack(ref, '/operations/fcm');
+        adminNavigateBack(ref, widget.listPath);
       }
     } catch (e) {
       if (mounted) {
@@ -1187,7 +1303,7 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const AdminDetailBackBar(backPath: '/operations/fcm/new'),
+            AdminDetailBackBar(backPath: widget.listPath),
             _opsSectionTitle('타겟 리스트'),
             Wrap(
               spacing: 16,
@@ -1255,30 +1371,75 @@ class _FcmTargetSendFormScreenState extends ConsumerState<FcmTargetSendFormScree
 }
 
 class NoticeListScreen extends ConsumerStatefulWidget {
-  const NoticeListScreen({super.key});
+  const NoticeListScreen({super.key, required this.routePath});
+
+  final String routePath;
 
   @override
   ConsumerState<NoticeListScreen> createState() => _NoticeListScreenState();
 }
 
 class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
-  int _page = 1;
+  late int _page;
   dynamic _data;
   bool _loading = true;
-  String _filter = 'all';
+  late String _filter;
   final _keyword = TextEditingController();
   final Set<String> _selected = {};
+
+  static const _basePath = '/operations/notices';
+
+  AdminListQuery get _query => AdminListQuery(
+        start: AdminListQuery.today(),
+        end: AdminListQuery.today(),
+        filter: _filter,
+        keyword: _keyword.text,
+        page: _page,
+        persistDates: false,
+      );
+
+  String get _listPathWithQuery => _query.toPath(_basePath);
 
   @override
   void initState() {
     super.initState();
+    _applyQuery(
+      AdminListQuery.fromPath(widget.routePath, persistDates: false),
+      syncPath: false,
+    );
     _load();
+  }
+
+  @override
+  void didUpdateWidget(NoticeListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routePath != widget.routePath) {
+      final incoming =
+          AdminListQuery.fromPath(widget.routePath, persistDates: false);
+      if (!incoming.sameAs(_query)) {
+        _applyQuery(incoming, syncPath: false);
+        _load();
+      }
+    }
   }
 
   @override
   void dispose() {
     _keyword.dispose();
     super.dispose();
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    _filter = q.filter;
+    _page = q.page;
+    if (_keyword.text != q.keyword) _keyword.text = q.keyword;
+    if (syncPath) syncAdminListPath(ref, _basePath, _query);
+  }
+
+  void _persistAndLoad({bool resetPage = false}) {
+    if (resetPage) _page = 1;
+    syncAdminListPath(ref, _basePath, _query);
+    _load();
   }
 
   Future<void> _load() async {
@@ -1320,7 +1481,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
       _page = 1;
       _keyword.clear();
     });
-    _load();
+    _persistAndLoad();
   }
 
   @override
@@ -1338,7 +1499,10 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
           Row(
             children: [
               ElevatedButton(
-                onPressed: () => adminNavigate(ref, '/operations/notices/new'),
+                onPressed: () => adminNavigate(
+                  ref,
+                  '/operations/notices/new?from=${Uri.encodeComponent(_listPathWithQuery)}',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.periodSelected,
                   foregroundColor: Colors.white,
@@ -1355,10 +1519,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
             hint: _filter == 'manage' ? '수정할 공지 제목 검색' : noticeSpec.searchHint,
             useSearchIcon: true,
             onFilterChanged: (v) => setState(() => _filter = v),
-            onSearch: () {
-              setState(() => _page = 1);
-              _load();
-            },
+            onSearch: () => _persistAndLoad(resetPage: true),
             onReset: _resetSearch,
           ),
         ],
@@ -1435,7 +1596,10 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                               DataCell(Text('${row['date'] ?? '-'}')),
                               DataCell(
                                 TextButton(
-                                  onPressed: () => adminNavigate(ref, '/operations/notices/$id/edit'),
+                                  onPressed: () => adminNavigate(
+                                    ref,
+                                    '/operations/notices/$id/edit?from=${Uri.encodeComponent(_listPathWithQuery)}',
+                                  ),
                                   child: const Text('수정'),
                                 ),
                               ),
@@ -1451,7 +1615,7 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
                       unit: '건',
                       onPageChanged: (p) {
                         setState(() => _page = p);
-                        _load();
+                        _persistAndLoad();
                       },
                     ),
                   ],
@@ -1462,9 +1626,14 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
 }
 
 class NoticeFormScreen extends ConsumerStatefulWidget {
-  const NoticeFormScreen({super.key, this.noticeId});
+  const NoticeFormScreen({
+    super.key,
+    this.noticeId,
+    this.listPath = '/operations/notices',
+  });
 
   final String? noticeId;
+  final String listPath;
 
   @override
   ConsumerState<NoticeFormScreen> createState() => _NoticeFormScreenState();
@@ -1521,7 +1690,7 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       if (ok != true) return;
     }
     if (!mounted) return;
-    adminNavigateBack(ref, '/operations/notices');
+    adminNavigateBack(ref, widget.listPath);
   }
 
   Future<void> _submit() async {
@@ -1550,7 +1719,7 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(widget.noticeId == null ? '정상적으로 등록되었습니다.' : '정상적으로 수정되었습니다.')),
       );
-      adminNavigateBack(ref, '/operations/notices');
+      adminNavigateBack(ref, widget.listPath);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
@@ -1568,7 +1737,7 @@ class _NoticeFormScreenState extends ConsumerState<NoticeFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminDetailBackBar(backPath: '/operations/notices'),
+          AdminDetailBackBar(backPath: widget.listPath),
           TextField(controller: _title, decoration: const InputDecoration(labelText: '제목')),
           const SizedBox(height: 12),
           Row(

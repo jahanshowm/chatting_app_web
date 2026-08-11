@@ -80,5 +80,49 @@ void main() {
       nav.navigateBackOr('/operations/popups');
       expect(container.read(adminShellPathProvider), '/operations/popups');
     });
+
+    test('필터 쿼리 있는 목록 → 상세 → back → 필터 유지', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final nav = container.read(adminShellPathProvider.notifier);
+
+      const list =
+          '/members/withdrawn?start=2026-08-01&end=2026-08-10&filter=male&q=test&page=2';
+      nav.resetTo(list);
+      nav.setPath(
+        '/members/u1?from=${Uri.encodeComponent(list)}',
+      );
+      nav.handleBrowserBack();
+      expect(container.read(adminShellPathProvider), list);
+    });
+
+    test('navigateBackOr fallback에 필터 쿼리 포함', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final nav = container.read(adminShellPathProvider.notifier);
+
+      const list =
+          '/members/new?start=2026-07-01&end=2026-07-31&q=kim';
+      nav.resetTo('/members/u1?from=${Uri.encodeComponent(list)}');
+      nav.navigateBackOr(list);
+      expect(container.read(adminShellPathProvider), list);
+    });
+
+    test('필터 replace 후 push → back 시 replace된 필터 복원', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final nav = container.read(adminShellPathProvider.notifier);
+
+      nav.resetTo('/members/new');
+      nav.setPathReplace(
+        '/members/new?start=2026-08-05&end=2026-08-05',
+      );
+      nav.setPath('/members/u1?from=%2Fmembers%2Fnew');
+      nav.handleBrowserBack();
+      expect(
+        container.read(adminShellPathProvider),
+        '/members/new?start=2026-08-05&end=2026-08-05',
+      );
+    });
   });
 }

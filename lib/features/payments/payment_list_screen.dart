@@ -8,13 +8,20 @@ import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
+import 'package:randomchat_admin/shared/utils/admin_list_query.dart';
 import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 
 class PaymentListScreen extends ConsumerStatefulWidget {
-  const PaymentListScreen({super.key, this.userId, this.fromPath});
+  const PaymentListScreen({
+    super.key,
+    required this.routePath,
+    this.userId,
+    this.fromPath,
+  });
 
+  final String routePath;
   final String? userId;
   /// CMS-01-03 — 탈퇴회원 등에서 진입 시 복귀 경로
   final String? fromPath;
@@ -24,28 +31,56 @@ class PaymentListScreen extends ConsumerStatefulWidget {
 }
 
 class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
-  String _period = 'daily';
-  late DateTime _start = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-  late DateTime _end = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+  late String _period;
+  late DateTime _start;
+  late DateTime _end;
   final _keyword = TextEditingController();
-  String _filter = 'all';
-  int _page = 1;
+  late String _filter;
+  late int _page;
   PaymentListResult? _data;
   final Set<String> _selected = {};
   bool _loading = true;
 
+  static const _basePath = '/payments';
+
+  AdminListQuery get _query => AdminListQuery(
+        start: _start,
+        end: _end,
+        period: _period,
+        filter: _filter,
+        keyword: _keyword.text,
+        page: _page,
+        extra: {
+          if (widget.userId != null && widget.userId!.isNotEmpty)
+            'user_id': widget.userId!,
+          if (widget.fromPath != null && widget.fromPath!.isNotEmpty)
+            'from': widget.fromPath!,
+        },
+      );
+
+  String get _listPathWithQuery => _query.toPath(_basePath);
+
   @override
   void initState() {
     super.initState();
+    _applyQuery(
+      AdminListQuery.fromPath(widget.routePath, defaultPeriod: 'daily'),
+      syncPath: false,
+    );
     _load();
   }
 
   @override
   void didUpdateWidget(PaymentListScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.userId != widget.userId) {
-      _page = 1;
-      _load();
+    if (oldWidget.userId != widget.userId ||
+        oldWidget.routePath != widget.routePath) {
+      final incoming =
+          AdminListQuery.fromPath(widget.routePath, defaultPeriod: 'daily');
+      if (!incoming.sameAs(_query) || oldWidget.userId != widget.userId) {
+        _applyQuery(incoming, syncPath: false);
+        _load();
+      }
     }
   }
 
@@ -53,6 +88,22 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
   void dispose() {
     _keyword.dispose();
     super.dispose();
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    _start = q.start;
+    _end = q.end;
+    _period = q.period ?? 'daily';
+    _filter = q.filter;
+    _page = q.page;
+    if (_keyword.text != q.keyword) _keyword.text = q.keyword;
+    if (syncPath) syncAdminListPath(ref, _basePath, _query);
+  }
+
+  void _persistAndLoad({bool resetPage = false}) {
+    if (resetPage) _page = 1;
+    syncAdminListPath(ref, _basePath, _query);
+    _load();
   }
 
   Future<void> _load() async {
@@ -81,8 +132,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
   }
 
   void _resetSearch() {
-    final today = DateTime.now();
-    final d = DateTime(today.year, today.month, today.day);
+    final d = AdminListQuery.today();
     setState(() {
       _period = 'daily';
       _start = d;
@@ -91,29 +141,33 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
       _page = 1;
       _keyword.clear();
     });
-    _load();
+    _persistAndLoad();
   }
 
   void _clearUserFilter() {
-    // 복귀는 브라우저 뒤로가기와 동일
     final back = widget.fromPath;
     if (back != null && back.isNotEmpty) {
       adminNavigateBack(ref, back);
       return;
     }
-    adminNavigateReplace(ref, '/payments');
+    final q = AdminListQuery(
+      start: _start,
+      end: _end,
+      period: _period,
+      filter: _filter,
+      keyword: _keyword.text,
+      page: 1,
+    );
+    adminNavigateReplace(ref, q.toPath(_basePath));
   }
 
   void _openMemberDetail(Map<String, dynamic> row) {
     final userId = row['user_id']?.toString();
     if (userId == null || userId.isEmpty) return;
-    final from = widget.fromPath ??
-        (widget.userId != null
-            ? '/payments?user_id=${Uri.encodeComponent(widget.userId!)}'
-            : '/payments');
+    // 결제 목록 필터를 유지한 채 복귀 (fromPath는 배너「필터 해제」용)
     adminNavigate(
       ref,
-      '/members/$userId?from=${Uri.encodeComponent(from)}',
+      '/members/$userId?from=${Uri.encodeComponent(_listPathWithQuery)}',
     );
   }
 
@@ -132,7 +186,6 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
     return sum;
   }
 
-  /// PG-01 — 선택 시에만 선택합계 표시 (미선택 전체합계·삭제 버튼 없음)
   int? _displaySum(List<Map<String, dynamic>> items) {
     if (_selected.isEmpty) return null;
     return _selectedSum(items);
@@ -152,7 +205,6 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // CMS-01-03 — 복귀는 브라우저(크롬) 뒤로가기. 커스텀 뒤로가기 UI 없음.
           if (widget.userId != null) ...[
             UserFilterBanner(
               userId: widget.userId!,
@@ -180,17 +232,15 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                   _start = DateTime(today.year, today.month, today.day);
                   _end = today;
                 }
-                _page = 1;
               });
-              _load();
+              _persistAndLoad(resetPage: true);
             },
             onChanged: (s, e) {
               setState(() {
                 _start = s;
                 _end = e;
-                _page = 1;
               });
-              _load();
+              _persistAndLoad(resetPage: true);
             },
           ),
           const SizedBox(height: 16),
@@ -200,10 +250,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
             keywordController: _keyword,
             useSearchIcon: true,
             onFilterChanged: (v) => setState(() => _filter = v),
-            onSearch: () {
-              setState(() => _page = 1);
-              _load();
-            },
+            onSearch: () => _persistAndLoad(resetPage: true),
             onReset: _resetSearch,
           ),
         ],
@@ -233,11 +280,13 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                           child: DataTable2(
                             columnSpacing: 12,
                             minWidth: 960,
-                            headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
+                            headingRowColor:
+                                WidgetStateProperty.all(AppColors.inputBg),
                             columns: [
                               DataColumn2(
                                 label: Checkbox(
-                                  value: _selected.length == items.length && items.isNotEmpty,
+                                  value: _selected.length == items.length &&
+                                      items.isNotEmpty,
                                   onChanged: (v) {
                                     setState(() {
                                       if (v == true) {
@@ -299,7 +348,7 @@ class _PaymentListScreenState extends ConsumerState<PaymentListScreen> {
                           unit: '건',
                           onPageChanged: (p) {
                             setState(() => _page = p);
-                            _load();
+                            _persistAndLoad();
                           },
                         ),
                       ],

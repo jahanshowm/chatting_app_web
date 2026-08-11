@@ -16,10 +16,12 @@ class MemberDetailScreen extends ConsumerStatefulWidget {
   const MemberDetailScreen({
     super.key,
     required this.userId,
+    required this.routePath,
     this.listPath = '/members/new',
   });
 
   final String userId;
+  final String routePath;
   final String listPath;
 
   @override
@@ -27,16 +29,59 @@ class MemberDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
+  static const _tabs = {'report', 'block', 'payment', 'inquiry'};
+
   MemberDetail? _detail;
-  String _activityTab = 'report';
+  late String _activityTab;
   PaginatedResult<Map<String, dynamic>>? _activities;
-  int _page = 1;
+  late int _page;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    _readActivityFromPath(widget.routePath);
     _load();
+  }
+
+  @override
+  void didUpdateWidget(MemberDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routePath != widget.routePath ||
+        oldWidget.userId != widget.userId) {
+      final prevTab = _activityTab;
+      final prevPage = _page;
+      _readActivityFromPath(widget.routePath);
+      if (oldWidget.userId != widget.userId) {
+        _load();
+      } else if (prevTab != _activityTab || prevPage != _page) {
+        _loadActivities();
+      }
+    }
+  }
+
+  void _readActivityFromPath(String path) {
+    final uri = Uri.parse(path.startsWith('/') ? path : '/$path');
+    final tab = uri.queryParameters['tab'];
+    final page = int.tryParse(uri.queryParameters['apage'] ?? '') ?? 1;
+    _activityTab = (tab != null && _tabs.contains(tab)) ? tab : 'report';
+    _page = page < 1 ? 1 : page;
+  }
+
+  String get _detailPathWithActivity {
+    final params = <String, String>{
+      'from': widget.listPath,
+      if (_activityTab != 'report') 'tab': _activityTab,
+      if (_page > 1) 'apage': '$_page',
+    };
+    return Uri(
+      path: '/members/${widget.userId}',
+      queryParameters: params,
+    ).toString();
+  }
+
+  void _persistActivity() {
+    adminNavigateReplace(ref, _detailPathWithActivity);
   }
 
   Future<void> _load() async {
@@ -70,6 +115,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
           page: _page,
           limit: 5,
         );
+    if (!mounted) return;
     setState(() => _activities = activities);
   }
 
@@ -145,6 +191,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                       _activityTab = tab;
                       _page = 1;
                     });
+                    _persistActivity();
                     _loadActivities();
                   },
                 ),
@@ -175,13 +222,11 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                               final targetUserId =
                                   row['target_user_id']?.toString();
                               VoidCallback? onTap;
-                              // CMS-02 — 히스토리(문의/결제/신고/차단)에서 직전 회원 상세로 복귀
-                              final returnTo =
-                                  '/members/${widget.userId}?from=${Uri.encodeComponent(widget.listPath)}';
+                              // CMS-02 — 히스토리에서 직전 회원 상세(탭·페이지 포함)로 복귀
+                              final returnTo = _detailPathWithActivity;
                               if (_activityTab == 'inquiry' &&
                                   inquiryId != null &&
                                   inquiryId.isNotEmpty) {
-                                // CMS-02 — push → 크롬 뒤로가기로 이전 회원 상세 복귀
                                 onTap = () => adminNavigate(
                                       ref,
                                       '/inquiries/$inquiryId?from=${Uri.encodeComponent(returnTo)}',
@@ -217,6 +262,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                           totalPages: _activities?.totalPages ?? 1,
                           onPageChanged: (p) {
                             setState(() => _page = p);
+                            _persistActivity();
                             _loadActivities();
                           },
                         ),

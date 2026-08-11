@@ -8,29 +8,69 @@ import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
+import 'package:randomchat_admin/shared/utils/admin_list_query.dart';
 import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, required this.routePath});
+
+  final String routePath;
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  String _period = 'daily';
-  late DateTime _start = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-  late DateTime _end = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+  late String _period;
+  late DateTime _start;
+  late DateTime _end;
   List<VisitorChartPoint> _visitors = [];
   List<Map<String, dynamic>> _signups = [];
   List<Map<String, dynamic>> _payments = [];
   bool _loading = true;
 
+  static const _basePath = '/dashboard';
+
+  AdminListQuery get _query => AdminListQuery(
+        start: _start,
+        end: _end,
+        period: _period,
+      );
+
   @override
   void initState() {
     super.initState();
+    _applyQuery(
+      AdminListQuery.fromPath(widget.routePath, defaultPeriod: 'daily'),
+      syncPath: false,
+    );
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routePath != widget.routePath) {
+      final incoming =
+          AdminListQuery.fromPath(widget.routePath, defaultPeriod: 'daily');
+      if (!incoming.sameAs(_query)) {
+        _applyQuery(incoming, syncPath: false);
+        _load();
+      }
+    }
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    _start = q.start;
+    _end = q.end;
+    _period = q.period ?? 'daily';
+    if (syncPath) syncAdminListPath(ref, _basePath, _query);
+  }
+
+  void _persistAndLoad() {
+    syncAdminListPath(ref, _basePath, _query);
     _load();
   }
 
@@ -65,14 +105,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _resetSearch() {
-    final today = DateTime.now();
-    final d = DateTime(today.year, today.month, today.day);
+    final d = AdminListQuery.today();
     setState(() {
       _period = 'daily';
       _start = d;
       _end = d;
     });
-    _load();
+    _persistAndLoad();
   }
 
   double get _chartMaxY {
@@ -141,14 +180,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   _end = d;
                 }
               });
-              _load();
+              _persistAndLoad();
             },
             onChanged: (s, e) {
               setState(() {
                 _start = s;
                 _end = e;
               });
-              _load();
+              _persistAndLoad();
             },
           ),
           Align(

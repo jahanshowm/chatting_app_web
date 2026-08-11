@@ -21,18 +21,23 @@ class AdminContentHost extends StatelessWidget {
     final uri = Uri.parse(path.startsWith('/') ? path : '/$path');
     final segments = uri.pathSegments;
 
-    if (path == '/dashboard' || segments.isEmpty) {
-      return const DashboardScreen();
+    if (uri.path == '/dashboard' || segments.isEmpty) {
+      return DashboardScreen(routePath: path);
     }
 
     if (segments.first == 'members') {
       if (segments.length >= 2 && !_memberTabs.contains(segments[1])) {
         final from = uri.queryParameters['from'] ?? '/members/new';
-        return MemberDetailScreen(userId: segments[1], listPath: from);
+        return MemberDetailScreen(
+          userId: segments[1],
+          listPath: from,
+          routePath: path,
+        );
       }
       final tab = segments.length >= 2 ? segments[1] : 'new';
       if (tab == 'report-block' || tab == 'reports' || tab == 'blocks') {
         return MemberReportBlockScreen(
+          routePath: path,
           initialTab: tab == 'blocks' ? 'block' : 'report',
         );
       }
@@ -40,11 +45,12 @@ class AdminContentHost extends StatelessWidget {
         'withdrawn' => 'withdrawn',
         _ => 'new',
       };
-      return MemberListScreen(tab: apiTab);
+      return MemberListScreen(tab: apiTab, routePath: path);
     }
 
     if (segments.first == 'payments') {
       return PaymentListScreen(
+        routePath: path,
         userId: uri.queryParameters['user_id'],
         fromPath: uri.queryParameters['from'],
       );
@@ -56,6 +62,7 @@ class AdminContentHost extends StatelessWidget {
         return InquiryDetailScreen(inquiryId: segments[1], listPath: from);
       }
       return InquiryListScreen(
+        routePath: path,
         withdrawn: segments.length >= 2 && segments[1] == 'withdrawn',
         userId: uri.queryParameters['user_id'],
         fromPath: uri.queryParameters['from'],
@@ -64,16 +71,20 @@ class AdminContentHost extends StatelessWidget {
 
     if (segments.first == 'operations') {
       if (segments.length == 1) {
-        return const PopupListScreen();
+        return PopupListScreen(routePath: path);
       }
       if (segments.length >= 2 && segments[1] == 'popups') {
-        if (segments.length >= 3 && segments[2] == 'new') return const PopupFormScreen();
-        if (segments.length >= 4 && segments[3] == 'edit') {
-          return PopupFormScreen(popupId: segments[2]);
+        final from = uri.queryParameters['from'] ?? '/operations/popups';
+        if (segments.length >= 3 && segments[2] == 'new') {
+          return PopupFormScreen(listPath: from);
         }
-        return const PopupListScreen();
+        if (segments.length >= 4 && segments[3] == 'edit') {
+          return PopupFormScreen(popupId: segments[2], listPath: from);
+        }
+        return PopupListScreen(routePath: path);
       }
       if (segments.length >= 2 && segments[1] == 'fcm') {
+        final from = uri.queryParameters['from'] ?? '/operations/fcm';
         if (segments.length >= 3 && segments[2] == 'new') {
           final sendMethod = uri.queryParameters['send_method'] ?? 'immediate';
           final scheduledRaw = uri.queryParameters['scheduled_at'];
@@ -82,27 +93,38 @@ class AdminContentHost extends StatelessWidget {
             scheduledAt = DateTime.tryParse(scheduledRaw);
           }
           if (segments.length >= 4 && segments[3] == 'all') {
-            return FcmAllSendFormScreen(sendMethod: sendMethod, scheduledAt: scheduledAt);
+            return FcmAllSendFormScreen(
+              sendMethod: sendMethod,
+              scheduledAt: scheduledAt,
+              listPath: from,
+            );
           }
           if (segments.length >= 4 && segments[3] == 'target') {
-            return FcmTargetSendFormScreen(sendMethod: sendMethod, scheduledAt: scheduledAt);
+            return FcmTargetSendFormScreen(
+              sendMethod: sendMethod,
+              scheduledAt: scheduledAt,
+              listPath: from,
+            );
           }
-          return const FcmSendTypeScreen();
+          return FcmSendTypeScreen(listPath: from);
         }
         if (segments.length >= 3) {
-          return FcmDetailScreen(campaignId: segments[2]);
+          return FcmDetailScreen(campaignId: segments[2], listPath: from);
         }
-        return const FcmListScreen();
+        return FcmListScreen(routePath: path);
       }
       if (segments.length >= 2 && segments[1] == 'notices') {
-        if (segments.length >= 3 && segments[2] == 'new') return const NoticeFormScreen();
-        if (segments.length >= 4 && segments[3] == 'edit') {
-          return NoticeFormScreen(noticeId: segments[2]);
+        final from = uri.queryParameters['from'] ?? '/operations/notices';
+        if (segments.length >= 3 && segments[2] == 'new') {
+          return NoticeFormScreen(listPath: from);
         }
-        return const NoticeListScreen();
+        if (segments.length >= 4 && segments[3] == 'edit') {
+          return NoticeFormScreen(noticeId: segments[2], listPath: from);
+        }
+        return NoticeListScreen(routePath: path);
       }
     }
 
-    return const DashboardScreen();
+    return DashboardScreen(routePath: path);
   }
 }

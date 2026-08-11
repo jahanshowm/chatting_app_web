@@ -26,11 +26,32 @@ void goAdminBrowserBack() {
 }
 
 bool _popStateInstalled = false;
+void Function()? _onPopState;
+bool _suppressNextPopState = false;
 
+/// 「목록으로」에서 스택을 먼저 pop한 뒤 history.back() 할 때 — 이중 pop 방지
+void suppressNextAdminPopState() {
+  _suppressNextPopState = true;
+}
+
+/// popstate 핸들러. 리스너는 앱 생애주기 동안 1회, [onPop]은 최신으로 교체.
 void ensureAdminPopStateInstalled(void Function() onPop) {
+  _onPopState = onPop;
   if (_popStateInstalled) return;
   _popStateInstalled = true;
-  html.window.onPopState.listen((_) => onPop());
+  html.window.onPopState.listen((_) {
+    if (_suppressNextPopState) {
+      _suppressNextPopState = false;
+      // history.back() 직후 URL 보정
+      resetAdminBrowserHistory('/admin');
+      return;
+    }
+    _onPopState?.call();
+  });
+}
+
+void clearAdminPopStateHandler() {
+  _onPopState = null;
 }
 
 /// NTC-01-06 — 새로고침 후에도 현재 CMS 경로 유지

@@ -1,30 +1,69 @@
 import 'package:randomchat_admin/core/config/app_env.dart';
 
-/// API가 내려준 URL은 그대로 사용. localhost·사설 IP만 apiBaseUrl로 교정.
+/// 어드민 Web(Flutter)용 미디어 URL 교정.
+///
+/// 운영에서 DB/API가 `https://randomchat.kr/photos/...` 를 주면 Apache 정적
+/// `/photos`에는 CORS가 없어 Image.network가 실패한다.
+/// `/api/photos`·`/api/uploads` 로 바꿔 앱 API(CORS 허용)에서 받게 한다.
 String resolveAdminMediaUrl(String? url) {
   if (url == null || url.isEmpty) return '';
 
+  final apiBase = Uri.parse(AppEnv.apiBaseUrl);
+  final mediaBase = Uri.parse(AppEnv.mediaBaseUrl);
+
+  late Uri uri;
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    final base = Uri.parse(AppEnv.apiBaseUrl);
-    if (url.startsWith('/')) return '$base$url';
-    return '$base/$url';
+    final path = url.startsWith('/') ? url : '/$url';
+    uri = apiBase.replace(path: path, query: '', fragment: '');
+  } else {
+    final parsed = Uri.tryParse(url);
+    if (parsed == null) return url;
+    uri = parsed;
   }
 
-  final uri = Uri.tryParse(url);
-  if (uri == null) return url;
+  const legacyHosts = {'127.0.0.1', 'localhost', '10.0.2.2'};
+  final host = uri.host;
+  final isLegacy = legacyHosts.contains(host) || host.startsWith('192.168.');
 
-  const legacyHosts = {'127.0.0.1', 'localhost', '10.0.2.2', '192.168.'};
-  final isLegacy = legacyHosts.any(
-    (h) => uri.host == h || (h.endsWith('.') && uri.host.startsWith(h)),
-  );
-  if (!isLegacy) return url;
+  var path = uri.path;
+  if (path.startsWith('/api/photos/') || path.startsWith('/api/uploads/')) {
+    path = path.substring('/api'.length);
+  }
 
-  final base = Uri.parse(AppEnv.apiBaseUrl);
-  return uri
+  final isPhoto = path.startsWith('/photos/');
+  final isInquiryUpload = path.startsWith('/uploads/inquiries/');
+  final isAdminUpload = path.startsWith('/uploads/');
+
+  if (!isPhoto && !isAdminUpload) {
+    if (isLegacy) {
+      return uri
+          .replace(
+            scheme: apiBase.scheme,
+            host: apiBase.host,
+            port: apiBase.hasPort ? apiBase.port : null,
+          )
+          .toString();
+    }
+    return uri.toString();
+  }
+
+  // 프로필·문의 첨부 → 앱 미디어 호스트 /api/...
+  if (isPhoto || isInquiryUpload) {
+    return mediaBase
+        .replace(
+          path: '/api$path',
+          query: '',
+          fragment: '',
+        )
+        .toString();
+  }
+
+  // 어드민 업로드(팝업 등) → 어드민 API /api/...
+  return apiBase
       .replace(
-        scheme: base.scheme,
-        host: base.host,
-        port: base.hasPort ? base.port : null,
+        path: '/api$path',
+        query: '',
+        fragment: '',
       )
       .toString();
 }

@@ -10,6 +10,10 @@ void goAdminBrowserBack() {}
 
 void ensureAdminPopStateInstalled(void Function() onPop) {}
 
+void suppressNextAdminPopState() {}
+
+void clearAdminPopStateHandler() {}
+
 void persistAdminCmsPath(String path) {}
 
 String? readPersistedAdminCmsPath() => null;

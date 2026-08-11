@@ -9,17 +9,20 @@ import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
+import 'package:randomchat_admin/shared/utils/admin_list_query.dart';
 import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 
 class InquiryListScreen extends ConsumerStatefulWidget {
   const InquiryListScreen({
     super.key,
+    required this.routePath,
     this.withdrawn = false,
     this.userId,
     this.fromPath,
   });
 
+  final String routePath;
   final bool withdrawn;
   /// CMS-01-03 — 탈퇴회원에서 진입 시 복귀 경로
   final String? fromPath;
@@ -31,20 +34,50 @@ class InquiryListScreen extends ConsumerStatefulWidget {
 
 class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
   final _keyword = TextEditingController();
-  Set<String> _statusFilter = {'all'};
-  int _page = 1;
+  late Set<String> _statusFilter;
+  late int _page;
   PaginatedResult<Map<String, dynamic>>? _data;
   final Set<String> _selected = {};
   bool _loading = true;
   Timer? _pollTimer;
 
-  AdminScreenSpec get _spec => widget.withdrawn ? inquiryWithdrawnSpec : inquiryActiveSpec;
+  AdminScreenSpec get _spec =>
+      widget.withdrawn ? inquiryWithdrawnSpec : inquiryActiveSpec;
+
+  String get _basePath =>
+      widget.withdrawn ? '/inquiries/withdrawn' : '/inquiries/active';
+
+  AdminListQuery get _query => AdminListQuery(
+        start: AdminListQuery.today(),
+        end: AdminListQuery.today(),
+        filter: 'all',
+        keyword: _keyword.text,
+        page: _page,
+        statuses: _statusFilter,
+        persistDates: false,
+        extra: {
+          if (widget.userId != null && widget.userId!.isNotEmpty)
+            'user_id': widget.userId!,
+          if (widget.fromPath != null && widget.fromPath!.isNotEmpty)
+            'from': widget.fromPath!,
+        },
+      );
+
+  String get _listPathWithQuery => _query.toPath(_basePath);
 
   @override
   void initState() {
     super.initState();
+    _applyQuery(
+      AdminListQuery.fromPath(widget.routePath, persistDates: false),
+      syncPath: false,
+    );
     _load();
-    // A2 INQ-01 — 새로고침 없이 목록 갱신
+    _startPollIfNeeded();
+  }
+
+  void _startPollIfNeeded() {
+    _pollTimer?.cancel();
     if (!widget.withdrawn) {
       _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
         if (!mounted || _loading) return;
@@ -57,17 +90,22 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
   void didUpdateWidget(InquiryListScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.withdrawn != widget.withdrawn) {
-      _page = 1;
-      _keyword.clear();
-      _statusFilter = {'all'};
-      _pollTimer?.cancel();
-      if (!widget.withdrawn) {
-        _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-          if (!mounted || _loading) return;
-          _load(silent: true);
-        });
-      }
+      _applyQuery(
+        AdminListQuery.fromPath(widget.routePath, persistDates: false),
+        syncPath: false,
+      );
+      _startPollIfNeeded();
       _load();
+      return;
+    }
+    if (oldWidget.routePath != widget.routePath ||
+        oldWidget.userId != widget.userId) {
+      final incoming =
+          AdminListQuery.fromPath(widget.routePath, persistDates: false);
+      if (!incoming.sameAs(_query) || oldWidget.userId != widget.userId) {
+        _applyQuery(incoming, syncPath: false);
+        _load();
+      }
     }
   }
 
@@ -76,6 +114,21 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
     _pollTimer?.cancel();
     _keyword.dispose();
     super.dispose();
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    _page = q.page;
+    _statusFilter = (q.statuses == null || q.statuses!.isEmpty)
+        ? {'all'}
+        : {...q.statuses!};
+    if (_keyword.text != q.keyword) _keyword.text = q.keyword;
+    if (syncPath) syncAdminListPath(ref, _basePath, _query);
+  }
+
+  void _persistAndLoad({bool resetPage = false}) {
+    if (resetPage) _page = 1;
+    syncAdminListPath(ref, _basePath, _query);
+    _load();
   }
 
   List<String>? get _apiStatuses {
@@ -103,28 +156,16 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       if (!mounted) return;
       setState(() => _loading = false);
       if (!silent) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
 
   void _openDetail(String id) {
-    // CMS-01-03 — 탈퇴회원→문의리스트→상세 후에도 from 체인 유지
-    final base =
-        widget.withdrawn ? '/inquiries/withdrawn' : '/inquiries/active';
-    final params = <String, String>{};
-    if (widget.userId != null && widget.userId!.isNotEmpty) {
-      params['user_id'] = widget.userId!;
-    }
-    if (widget.fromPath != null && widget.fromPath!.isNotEmpty) {
-      params['from'] = widget.fromPath!;
-    }
-    final listReturn = params.isEmpty
-        ? base
-        : Uri(path: base, queryParameters: params).toString();
     adminNavigate(
       ref,
-      '/inquiries/$id?from=${Uri.encodeComponent(listReturn)}',
+      '/inquiries/$id?from=${Uri.encodeComponent(_listPathWithQuery)}',
     );
   }
 
@@ -146,7 +187,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       _page = 1;
       _keyword.clear();
     });
-    _load();
+    _persistAndLoad();
   }
 
   @override
@@ -161,19 +202,25 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       toolbar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // CMS-01-03 — 복귀는 브라우저(크롬) 뒤로가기. 커스텀 뒤로가기 UI 없음.
           if (widget.userId != null) ...[
             UserFilterBanner(
               userId: widget.userId!,
               label: widget.withdrawn ? '탈퇴 회원 문의내역' : '회원 문의내역',
               onClear: () {
-                final fallback = widget.withdrawn
-                    ? '/inquiries/withdrawn'
-                    : '/inquiries/active';
                 if (widget.fromPath != null && widget.fromPath!.isNotEmpty) {
                   adminNavigateBack(ref, widget.fromPath!);
                 } else {
-                  adminNavigateReplace(ref, fallback);
+                  adminNavigateReplace(
+                    ref,
+                    AdminListQuery(
+                      start: AdminListQuery.today(),
+                      end: AdminListQuery.today(),
+                      keyword: _keyword.text,
+                      page: 1,
+                      statuses: _statusFilter,
+                      persistDates: false,
+                    ).toPath(_basePath),
+                  );
                 }
               },
             ),
@@ -182,11 +229,8 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
           InquiryStatusFilterBar(
             selected: _statusFilter,
             onChanged: (next) {
-              setState(() {
-                _statusFilter = next;
-                _page = 1;
-              });
-              _load();
+              setState(() => _statusFilter = next);
+              _persistAndLoad(resetPage: true);
             },
           ),
           const SizedBox(height: 16),
@@ -196,10 +240,7 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
             keywordController: _keyword,
             hint: spec.searchHint,
             useSearchIcon: false,
-            onSearch: () {
-              setState(() => _page = 1);
-              _load();
-            },
+            onSearch: () => _persistAndLoad(resetPage: true),
             onReset: _resetSearch,
           ),
         ],
@@ -207,7 +248,10 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
       summary: Row(
         children: [
           const Spacer(),
-          SelectDeleteButton(selectedCount: _selected.length, onDelete: _deleteSelected),
+          SelectDeleteButton(
+            selectedCount: _selected.length,
+            onDelete: _deleteSelected,
+          ),
         ],
       ),
       child: _loading
@@ -219,73 +263,83 @@ class _InquiryListScreenState extends ConsumerState<InquiryListScreen> {
                       child: Center(child: AdminEmptyList()),
                     )
                   : Column(
-                  children: [
-                    Expanded(
-                      child: DataTable2(
-                        columnSpacing: 12,
-                        minWidth: 960,
-                        headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
-                        columns: [
-                          DataColumn2(
-                            label: Checkbox(
-                              value: _selected.length == items.length && items.isNotEmpty,
-                              onChanged: (v) {
-                                setState(() {
-                                  if (v == true) {
-                                    _selected.addAll(items.map((e) => e['id'] as String));
-                                  } else {
-                                    _selected.clear();
-                                  }
-                                });
-                              },
-                            ),
-                            size: ColumnSize.S,
-                          ),
-                          const DataColumn2(label: Text('성별')),
-                          const DataColumn2(label: Text('이름')),
-                          const DataColumn2(label: Text('문의제목')),
-                          const DataColumn2(label: Text('일자')),
-                          const DataColumn2(label: Text('처리상태')),
-                        ],
-                        rows: items.map((row) {
-                          final id = row['id'] as String;
-                          return DataRow2(
-                            onTap: () => _openDetail(id),
-                            cells: [
-                              DataCell(Checkbox(
-                                value: _selected.contains(id),
-                                onChanged: (v) {
-                                  setState(() {
-                                    if (v == true) {
-                                      _selected.add(id);
-                                    } else {
-                                      _selected.remove(id);
-                                    }
-                                  });
-                                },
-                              )),
-                              DataCell(GenderCellText('${row['gender'] ?? '-'}')),
-                              DataCell(Text('${row['name'] ?? '-'}')),
-                              DataCell(Text('${row['title'] ?? '-'}')),
-                              DataCell(Text('${row['date'] ?? '-'}')),
-                              DataCell(_StatusBadge(label: '${row['status'] ?? '-'}')),
+                      children: [
+                        Expanded(
+                          child: DataTable2(
+                            columnSpacing: 12,
+                            minWidth: 960,
+                            headingRowColor:
+                                WidgetStateProperty.all(AppColors.inputBg),
+                            columns: [
+                              DataColumn2(
+                                label: Checkbox(
+                                  value: _selected.length == items.length &&
+                                      items.isNotEmpty,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      if (v == true) {
+                                        _selected.addAll(
+                                          items.map((e) => e['id'] as String),
+                                        );
+                                      } else {
+                                        _selected.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                                size: ColumnSize.S,
+                              ),
+                              const DataColumn2(label: Text('성별')),
+                              const DataColumn2(label: Text('이름')),
+                              const DataColumn2(label: Text('문의제목')),
+                              const DataColumn2(label: Text('일자')),
+                              const DataColumn2(label: Text('처리상태')),
                             ],
-                          );
-                        }).toList(),
-                      ),
+                            rows: items.map((row) {
+                              final id = row['id'] as String;
+                              return DataRow2(
+                                onTap: () => _openDetail(id),
+                                cells: [
+                                  DataCell(Checkbox(
+                                    value: _selected.contains(id),
+                                    onChanged: (v) {
+                                      setState(() {
+                                        if (v == true) {
+                                          _selected.add(id);
+                                        } else {
+                                          _selected.remove(id);
+                                        }
+                                      });
+                                    },
+                                  )),
+                                  DataCell(
+                                    GenderCellText('${row['gender'] ?? '-'}'),
+                                  ),
+                                  DataCell(Text('${row['name'] ?? '-'}')),
+                                  DataCell(Text('${row['title'] ?? '-'}')),
+                                  DataCell(Text('${row['date'] ?? '-'}')),
+                                  DataCell(
+                                    _StatusBadge(
+                                      label: '${row['status'] ?? '-'}',
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        ListPageFooter(
+                          page: _page,
+                          totalPages: _data?.totalPages ?? 1,
+                          totalCount: totalCount,
+                          unit: '건',
+                          onPageChanged: (p) {
+                            setState(() => _page = p);
+                            _persistAndLoad();
+                          },
+                        ),
+                      ],
                     ),
-                    ListPageFooter(
-                      page: _page,
-                      totalPages: _data?.totalPages ?? 1,
-                      totalCount: totalCount,
-                      unit: '건',
-                      onPageChanged: (p) {
-                        setState(() => _page = p);
-                        _load();
-                      },
-                    ),
-                  ],
-                ),
             ),
     );
   }
@@ -309,7 +363,14 @@ class _StatusBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      ),
     );
   }
 }

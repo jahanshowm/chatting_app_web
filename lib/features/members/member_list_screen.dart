@@ -7,15 +7,22 @@ import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
+import 'package:randomchat_admin/shared/utils/admin_list_query.dart';
 import 'package:randomchat_admin/shared/widgets/admin_common.dart';
 import 'package:randomchat_admin/shared/widgets/admin_page_frame.dart';
 import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 
 class MemberListScreen extends ConsumerStatefulWidget {
-  const MemberListScreen({super.key, required this.tab});
+  const MemberListScreen({
+    super.key,
+    required this.tab,
+    required this.routePath,
+  });
 
   /// new | withdrawn
   final String tab;
+  /// CMS path (+ 날짜·검색 쿼리) — 뒤로가기 복원용
+  final String routePath;
 
   @override
   ConsumerState<MemberListScreen> createState() => _MemberListScreenState();
@@ -23,20 +30,33 @@ class MemberListScreen extends ConsumerStatefulWidget {
 
 class _MemberListScreenState extends ConsumerState<MemberListScreen> {
   late String _tab = widget.tab;
-  late DateTime _start = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-  late DateTime _end = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+  late DateTime _start;
+  late DateTime _end;
   final _keyword = TextEditingController();
-  String _filter = 'all';
-  int _page = 1;
+  late String _filter;
+  late int _page;
   PaginatedResult<Map<String, dynamic>>? _data;
   final Set<String> _selected = {};
   bool _loading = true;
 
   AdminScreenSpec get _spec => _tab == 'withdrawn' ? memberWithdrawnSpec : memberNewSpec;
 
+  String get _basePath => _tab == 'withdrawn' ? '/members/withdrawn' : '/members/new';
+
+  AdminListQuery get _query => AdminListQuery(
+        start: _start,
+        end: _end,
+        filter: _filter,
+        keyword: _keyword.text,
+        page: _page,
+      );
+
+  String get _listPathWithQuery => _query.toPath(_basePath);
+
   @override
   void initState() {
     super.initState();
+    _applyQuery(AdminListQuery.fromPath(widget.routePath), syncPath: false);
     _load();
   }
 
@@ -45,10 +65,17 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.tab != widget.tab) {
       _tab = widget.tab;
-      _filter = 'all';
-      _page = 1;
-      _keyword.clear();
+      _applyQuery(AdminListQuery.fromPath(widget.routePath), syncPath: false);
+      _selected.clear();
       _load();
+      return;
+    }
+    if (oldWidget.routePath != widget.routePath) {
+      final incoming = AdminListQuery.fromPath(widget.routePath);
+      if (!incoming.sameAs(_query)) {
+        _applyQuery(incoming, syncPath: false);
+        _load();
+      }
     }
   }
 
@@ -56,6 +83,25 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
   void dispose() {
     _keyword.dispose();
     super.dispose();
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    _start = q.start;
+    _end = q.end;
+    _filter = q.filter;
+    _page = q.page;
+    if (_keyword.text != q.keyword) {
+      _keyword.text = q.keyword;
+    }
+    if (syncPath) {
+      syncAdminListPath(ref, _basePath, _query);
+    }
+  }
+
+  void _persistAndLoad({bool resetPage = false}) {
+    if (resetPage) _page = 1;
+    syncAdminListPath(ref, _basePath, _query);
+    _load();
   }
 
   Future<void> _load() async {
@@ -95,8 +141,7 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
   }
 
   void _resetSearch() {
-    final today = DateTime.now();
-    final d = DateTime(today.year, today.month, today.day);
+    final d = AdminListQuery.today();
     setState(() {
       _start = d;
       _end = d;
@@ -104,7 +149,7 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
       _page = 1;
       _keyword.clear();
     });
-    _load();
+    _persistAndLoad();
   }
 
   List<(String, String)> get _columns {
@@ -126,13 +171,10 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     ];
   }
 
-  String get _listPath => _tab == 'withdrawn' ? '/members/withdrawn' : '/members/new';
-
   void _openDetail(String id) {
-    // CMS-02 — push로 목록←상세 히스토리 유지
     adminNavigate(
       ref,
-      '/members/$id?from=${Uri.encodeComponent(_listPath)}',
+      '/members/$id?from=${Uri.encodeComponent(_listPathWithQuery)}',
     );
   }
 
@@ -142,6 +184,7 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     final items = _data?.items ?? [];
     final totalPages = _data?.totalPages ?? 1;
     final totalCount = _data?.total ?? items.length;
+    final returnTo = _listPathWithQuery;
 
     return AdminContentArea(
       screenId: spec.id,
@@ -156,9 +199,8 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
               setState(() {
                 _start = s;
                 _end = e;
-                _page = 1;
               });
-              _load();
+              _persistAndLoad(resetPage: true);
             },
           ),
           const SizedBox(height: 16),
@@ -169,8 +211,8 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
             hint: spec.searchHint,
             onFilterChanged: (v) => setState(() => _filter = v),
             onSearch: () {
-              setState(() => _page = 1);
-              _load();
+              setState(() {});
+              _persistAndLoad(resetPage: true);
             },
             onReset: _resetSearch,
           ),
@@ -196,103 +238,115 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                       child: Center(child: AdminEmptyList()),
                     )
                   : Column(
-                  children: [
-                    Expanded(
-                      child: DataTable2(
-                        columnSpacing: 12,
-                        horizontalMargin: 12,
-                        minWidth: 960,
-                        headingRowColor: WidgetStateProperty.all(AppColors.inputBg),
-                        columns: [
-                          // CMS-01-03 — 탈퇴회원: 체크박스·삭제 제거
-                          if (_tab != 'withdrawn')
-                            DataColumn2(
-                              label: Checkbox(
-                                value: _selected.length == items.length && items.isNotEmpty,
-                                onChanged: (v) {
-                                  setState(() {
-                                    if (v == true) {
-                                      _selected.addAll(items.map((e) => e['id'] as String));
-                                    } else {
-                                      _selected.clear();
-                                    }
-                                  });
-                                },
-                              ),
-                              size: ColumnSize.S,
-                            ),
-                          ..._columns.map((c) => DataColumn2(label: Text(c.$2))),
-                        ],
-                        rows: items.map((row) {
-                          final id = row['id'] as String;
-                          return DataRow2(
-                            onTap: _tab == 'withdrawn'
-                                ? null
-                                : () => _openDetail(id),
-                            selected: _selected.contains(id),
-                            cells: [
+                      children: [
+                        Expanded(
+                          child: DataTable2(
+                            columnSpacing: 12,
+                            horizontalMargin: 12,
+                            minWidth: 960,
+                            headingRowColor:
+                                WidgetStateProperty.all(AppColors.inputBg),
+                            columns: [
                               if (_tab != 'withdrawn')
-                                DataCell(Checkbox(
-                                  value: _selected.contains(id),
-                                  onChanged: (v) {
-                                    setState(() {
-                                      if (v == true) {
-                                        _selected.add(id);
-                                      } else {
-                                        _selected.remove(id);
-                                      }
-                                    });
-                                  },
-                                )),
-                              ..._columns.map((c) {
-                                if (_tab == 'withdrawn' && c.$1 == 'inquiry_summary') {
-                                  final count = row[c.$1];
-                                  // CMS-01-03 — 복귀 시 탈퇴회원 리스트로
-                                  return DataCell(
-                                    TextButton(
-                                      onPressed: () => adminNavigate(
-                                        ref,
-                                        '/inquiries/withdrawn?user_id=${Uri.encodeComponent(id)}&from=${Uri.encodeComponent('/members/withdrawn')}',
-                                      ),
-                                      child: Text(count == '-' ? '내역보기' : '내역보기 ($count)'),
-                                    ),
-                                  );
-                                }
-                                if (_tab == 'withdrawn' && c.$1 == 'payment_summary') {
-                                  final count = row[c.$1];
-                                  return DataCell(
-                                    TextButton(
-                                      onPressed: () => adminNavigate(
-                                        ref,
-                                        '/payments?user_id=${Uri.encodeComponent(id)}&from=${Uri.encodeComponent('/members/withdrawn')}',
-                                      ),
-                                      child: Text(count == '-' ? '내역보기' : '내역보기 ($count)'),
-                                    ),
-                                  );
-                                }
-                                if (c.$1 == 'gender') {
-                                  return DataCell(
-                                    GenderCellText('${row[c.$1] ?? '-'}'),
-                                  );
-                                }
-                                return DataCell(Text('${row[c.$1] ?? '-'}'));
-                              }),
+                                DataColumn2(
+                                  label: Checkbox(
+                                    value: _selected.length == items.length &&
+                                        items.isNotEmpty,
+                                    onChanged: (v) {
+                                      setState(() {
+                                        if (v == true) {
+                                          _selected.addAll(
+                                            items.map((e) => e['id'] as String),
+                                          );
+                                        } else {
+                                          _selected.clear();
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  size: ColumnSize.S,
+                                ),
+                              ..._columns.map((c) => DataColumn2(label: Text(c.$2))),
                             ],
-                          );
-                        }).toList(),
-                      ),
+                            rows: items.map((row) {
+                              final id = row['id'] as String;
+                              return DataRow2(
+                                onTap: _tab == 'withdrawn'
+                                    ? null
+                                    : () => _openDetail(id),
+                                selected: _selected.contains(id),
+                                cells: [
+                                  if (_tab != 'withdrawn')
+                                    DataCell(Checkbox(
+                                      value: _selected.contains(id),
+                                      onChanged: (v) {
+                                        setState(() {
+                                          if (v == true) {
+                                            _selected.add(id);
+                                          } else {
+                                            _selected.remove(id);
+                                          }
+                                        });
+                                      },
+                                    )),
+                                  ..._columns.map((c) {
+                                    if (_tab == 'withdrawn' &&
+                                        c.$1 == 'inquiry_summary') {
+                                      final count = row[c.$1];
+                                      return DataCell(
+                                        TextButton(
+                                          onPressed: () => adminNavigate(
+                                            ref,
+                                            '/inquiries/withdrawn?user_id=${Uri.encodeComponent(id)}&from=${Uri.encodeComponent(returnTo)}',
+                                          ),
+                                          child: Text(
+                                            count == '-'
+                                                ? '내역보기'
+                                                : '내역보기 ($count)',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    if (_tab == 'withdrawn' &&
+                                        c.$1 == 'payment_summary') {
+                                      final count = row[c.$1];
+                                      return DataCell(
+                                        TextButton(
+                                          onPressed: () => adminNavigate(
+                                            ref,
+                                            '/payments?user_id=${Uri.encodeComponent(id)}&from=${Uri.encodeComponent(returnTo)}',
+                                          ),
+                                          child: Text(
+                                            count == '-'
+                                                ? '내역보기'
+                                                : '내역보기 ($count)',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    if (c.$1 == 'gender') {
+                                      return DataCell(
+                                        GenderCellText('${row[c.$1] ?? '-'}'),
+                                      );
+                                    }
+                                    return DataCell(Text('${row[c.$1] ?? '-'}'));
+                                  }),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        ListPageFooter(
+                          page: _page,
+                          totalPages: totalPages,
+                          totalCount: totalCount,
+                          onPageChanged: (p) {
+                            setState(() => _page = p);
+                            _persistAndLoad();
+                          },
+                        ),
+                      ],
                     ),
-                    ListPageFooter(
-                      page: _page,
-                      totalPages: totalPages,
-                      totalCount: totalCount,
-                      onPageChanged: (p) {
-                        setState(() => _page = p);
-                        _load();
-                      },
-                    ),
-                  ],
-                ),
             ),
     );
   }

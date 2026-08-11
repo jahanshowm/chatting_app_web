@@ -5,6 +5,8 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:randomchat_admin/core/config/app_env.dart';
+import 'package:randomchat_admin/core/navigation/admin_shell_path_provider.dart';
+import 'package:randomchat_admin/core/navigation/admin_url_sync.dart';
 import 'package:randomchat_admin/core/router/app_router.dart';
 import 'package:randomchat_admin/core/theme/app_theme.dart';
 // QA Web: ./deploy/deploy-admin-dev.sh → https://admin-dev.adminchat.kr
@@ -28,11 +30,36 @@ Future<void> _preloadKoreanFonts() async {
   ]);
 }
 
-class RandomChatAdminApp extends ConsumerWidget {
+class RandomChatAdminApp extends ConsumerStatefulWidget {
   const RandomChatAdminApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RandomChatAdminApp> createState() => _RandomChatAdminAppState();
+}
+
+class _RandomChatAdminAppState extends ConsumerState<RandomChatAdminApp> {
+  @override
+  void initState() {
+    super.initState();
+    _bindBrowserBack();
+  }
+
+  void _bindBrowserBack() {
+    // AdminAppPage가 아니라 앱 루트에 고정 — 로그인/로딩 전환으로 dispose되지 않음
+    ensureAdminPopStateInstalled(() {
+      if (!mounted) return;
+      try {
+        ref.read(adminShellPathProvider.notifier).handleBrowserBack();
+      } catch (_) {
+        // unmount race — 이전 "Using ref when unmounted" 방지
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _bindBrowserBack();
+
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: '랜덤채팅 관리자',
