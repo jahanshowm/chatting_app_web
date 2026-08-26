@@ -48,6 +48,26 @@ class MemberInfoHeader extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              if (data['is_real'] == false || data['account_type'] == '가짜') ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: const Color(0xFFFDBA74)),
+                  ),
+                  child: const Text(
+                    '가짜 사용자',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFB45309),
+                    ),
+                  ),
+                ),
+              ],
               const Spacer(),
               Icon(
                 Icons.monetization_on_outlined,

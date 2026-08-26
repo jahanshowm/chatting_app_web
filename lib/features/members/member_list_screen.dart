@@ -162,11 +162,12 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
         ('withdrawn_at', '탈퇴일'),
       ];
     }
-    return const [
+    return [
       ('gender', '성별'),
       ('name', '이름'),
       ('birth_date', '생년월일'),
       ('phone_number', '휴대폰번호'),
+      ('account_type', '구분'),
       ('joined_at', '가입일'),
     ];
   }
@@ -327,6 +328,23 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                                     if (c.$1 == 'gender') {
                                       return DataCell(
                                         GenderCellText('${row[c.$1] ?? '-'}'),
+                                      );
+                                    }
+                                    if (c.$1 == 'account_type') {
+                                      final fake = row['is_real'] == false ||
+                                          row['account_type'] == '가짜';
+                                      return DataCell(
+                                        Text(
+                                          fake ? '가짜' : '실제',
+                                          style: TextStyle(
+                                            color: fake
+                                                ? const Color(0xFFB45309)
+                                                : null,
+                                            fontWeight: fake
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                          ),
+                                        ),
                                       );
                                     }
                                     return DataCell(Text('${row[c.$1] ?? '-'}'));
