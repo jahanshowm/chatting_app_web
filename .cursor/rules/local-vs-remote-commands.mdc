@@ -1,0 +1,62 @@
+---
+description: SSH/scp 등 로컬·원격 명령 구분 필수 (복붙 사고 방지)
+alwaysApply: true
+---
+
+# 【불가침】로컬 vs 원격 명령 — 어디 터미널인지 반드시 표시
+
+## ★ 사고
+
+`scp` 명령을 SSH **들어간 뒤 서버 셸**에서 실행하게 안내함.
+서버에는 로컬 fixture 경로가 없고, scp가 자기 자신으로 붙어 멈춤.
+`exit`가 셸 종료가 아니라 hung scp 입력으로 들어감.
+
+## 절대 규칙
+
+복붙용 명령을 줄 때 **실행 위치를 명령보다 먼저** 한 줄로 밝힌다.
+위치 표시 없이 명령만 나열하지 않는다. “명령어만 달라”여도 예외 없음.
+
+| 표시 | 의미 |
+|------|------|
+| **맥 로컬** (`randomchat` / `randomchat_back` / `randomchat_admin`) | 사용자 Mac 터미널. SSH 들어가기 **전** |
+| **서버 SSH** (`root@…` 프롬프트) | `ssh` 접속 **후** |
+
+## 어디에 무엇을
+
+| 명령 | 실행 위치 |
+|------|-----------|
+| `scp … root@…:` | **맥 로컬만** |
+| `ssh root@…` | **맥 로컬만** |
+| `./deploy/*.sh` | **맥 로컬** 해당 레포 |
+| `cd /home/users/…` / `pnpm run seed:…` / `pm2 …` | **서버 SSH** |
+
+## 필수 포맷
+
+```text
+【맥 로컬 · randomchat_back】
+scp src/.../file.csv root@3.35.204.151:/home/users/randomchat/www/.../file.csv
+
+【서버 SSH】
+ssh root@3.35.204.151
+```
+(접속 후)
+```text
+【서버 SSH · 이미 접속된 상태】
+cd /home/users/randomchat/www
+NODE_ENV=production ALLOW_DUMMY_CSV_SEED=1 pnpm run seed:dummy-csv
+```
+
+## 금지
+
+```text
+❌ BAD — 위치 없이 명령만
+scp src/database/fixtures/....csv root@3.35.204.151:...
+ssh root@3.35.204.151
+cd /home/users/randomchat/www
+pnpm run seed:dummy-csv
+
+✅ GOOD — 블록마다 【맥 로컬】/【서버 SSH】표기
+```
+
+- 서버 안에서 `scp 로컬경로 root@같은서버:` 제안 금지
+- 사용자가 SSH 세션 중이면: “그 터미널에서 `exit` → 맥에서 scp”를 먼저 말함
