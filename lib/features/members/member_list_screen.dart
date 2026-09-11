@@ -172,6 +172,66 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     ];
   }
 
+  // TODO: 휴대폰번호 변경 UI 임시 비활성 — 재활성 시 가입일 셀 주석도 함께 해제
+  // Future<void> _changePhone(Map<String, dynamic> row) async {
+  //   final id = row['id'] as String?;
+  //   if (id == null || id.isEmpty) return;
+  //   final current = '${row['phone_number'] ?? ''}'.replaceAll('-', '');
+  //   final controller = TextEditingController(
+  //     text: current == '-' ? '' : current,
+  //   );
+  //   final ok = await showDialog<bool>(
+  //     context: context,
+  //     builder: (ctx) => AlertDialog(
+  //       title: const Text('휴대폰번호 변경'),
+  //       content: TextField(
+  //         controller: controller,
+  //         keyboardType: TextInputType.phone,
+  //         autofocus: true,
+  //         decoration: const InputDecoration(
+  //           hintText: '숫자만 입력',
+  //           labelText: '새 휴대폰번호',
+  //         ),
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(ctx, false),
+  //           child: const Text('취소'),
+  //         ),
+  //         ElevatedButton(
+  //           onPressed: () => Navigator.pop(ctx, true),
+  //           child: const Text('변경'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  //   final digits = controller.text.replaceAll(RegExp(r'\D'), '');
+  //   controller.dispose();
+  //   if (ok != true || !mounted) return;
+  //   if (digits.isEmpty) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('휴대폰번호를 입력해주세요.')),
+  //     );
+  //     return;
+  //   }
+  //   try {
+  //     await ref.read(adminApiProvider).updateMemberPhone(
+  //           userId: id,
+  //           phoneNumber: digits,
+  //         );
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('휴대폰번호가 변경되었습니다.')),
+  //     );
+  //     await _load();
+  //   } catch (e) {
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text(e.toString())),
+  //     );
+  //   }
+  // }
+
   void _openDetail(String id) {
     adminNavigate(
       ref,
@@ -347,6 +407,28 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                                         ),
                                       );
                                     }
+                                    // TODO: 휴대폰번호 변경 UI 임시 비활성
+                                    // if (_tab != 'withdrawn' &&
+                                    //     c.$1 == 'joined_at') {
+                                    //   return DataCell(
+                                    //     Row(
+                                    //       children: [
+                                    //         Flexible(
+                                    //           child: Text(
+                                    //             '${row[c.$1] ?? '-'}',
+                                    //           ),
+                                    //         ),
+                                    //         const SizedBox(width: 8),
+                                    //         TextButton(
+                                    //           onPressed: () =>
+                                    //               _changePhone(row),
+                                    //           child: const Text('번호변경'),
+                                    //         ),
+                                    //       ],
+                                    //     ),
+                                    //     onTap: () => _changePhone(row),
+                                    //   );
+                                    // }
                                     return DataCell(Text('${row[c.$1] ?? '-'}'));
                                   }),
                                 ],

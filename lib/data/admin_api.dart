@@ -75,6 +75,16 @@ class AdminApi {
     );
   }
 
+  Future<Map<String, dynamic>> updateMemberPhone({
+    required String userId,
+    required String phoneNumber,
+  }) {
+    return _client.patchData(
+      '/admin/members/$userId/phone',
+      data: {'phone_number': phoneNumber},
+    );
+  }
+
   Future<MemberDetail> memberDetail(String id) =>
       _client.getData('/admin/members/$id', fromJson: MemberDetail.fromJson);
 
