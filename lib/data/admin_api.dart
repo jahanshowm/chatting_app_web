@@ -23,6 +23,20 @@ class AdminApi {
 
   Future<AdminUser> me() => _client.getData('/admin/auth/me', fromJson: AdminUser.fromJson);
 
+  Future<DashboardKpis> dashboardKpis({
+    String? startDate,
+    String? endDate,
+  }) {
+    return _client.getData(
+      '/admin/dashboard/kpis',
+      queryParameters: {
+        'start_date': ?startDate,
+        'end_date': ?endDate,
+      },
+      fromJson: DashboardKpis.fromJson,
+    );
+  }
+
   Future<List<VisitorChartPoint>> visitors({
     required String period,
     String? startDate,

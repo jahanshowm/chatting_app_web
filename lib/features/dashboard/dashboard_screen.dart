@@ -29,6 +29,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<VisitorChartPoint> _visitors = [];
   List<Map<String, dynamic>> _signups = [];
   List<Map<String, dynamic>> _payments = [];
+  DashboardKpis _kpis = DashboardKpis(
+    activeUsers: 0,
+    newMembers: 0,
+    payments: 0,
+    thresholdSec: 180,
+  );
   bool _loading = true;
 
   static const _basePath = '/dashboard';
@@ -84,6 +90,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           startDate: DateRangeBar.formatApi(_start),
           endDate: DateRangeBar.formatApi(_end),
         ),
+        api.dashboardKpis(
+          startDate: DateRangeBar.formatApi(_start),
+          endDate: DateRangeBar.formatApi(_end),
+        ),
         api.recentSignups(),
         api.recentPayments(),
       ]);
@@ -93,8 +103,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _visitors = _trimFutureDailyHours(
           results[0] as List<VisitorChartPoint>,
         );
-        _signups = results[1] as List<Map<String, dynamic>>;
-        _payments = results[2] as List<Map<String, dynamic>>;
+        _kpis = results[1] as DashboardKpis;
+        _signups = results[2] as List<Map<String, dynamic>>;
+        _payments = results[3] as List<Map<String, dynamic>>;
         _loading = false;
       });
     } catch (e) {
@@ -203,7 +214,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
-                    height: 360,
+                    height: 400,
                     padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.border),
@@ -212,6 +223,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        _DashboardKpiRow(kpis: _kpis),
+                        const SizedBox(height: 16),
                         Row(
                           children: [
                             _LegendDot(color: AppColors.male, label: '남성'),
@@ -378,6 +391,59 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _DashboardKpiRow extends StatelessWidget {
+  const _DashboardKpiRow({required this.kpis});
+
+  final DashboardKpis kpis;
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat('#,###');
+    return Wrap(
+      spacing: 32,
+      runSpacing: 8,
+      children: [
+        _KpiText(label: '활성자(3분 이상)', value: fmt.format(kpis.activeUsers)),
+        _KpiText(label: '신규 회원', value: fmt.format(kpis.newMembers)),
+        _KpiText(label: '결제', value: fmt.format(kpis.payments)),
+      ],
+    );
+  }
+}
+
+class _KpiText extends StatelessWidget {
+  const _KpiText({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label : ',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+            ),
+          ),
+          TextSpan(
+            text: '$value 명',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.text,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

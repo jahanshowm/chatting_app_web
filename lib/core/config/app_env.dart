@@ -6,6 +6,8 @@ class AppEnv {
   }
 
   static String get apiBaseUrl {
+    const fromDefine = String.fromEnvironment('API_BASE_URL');
+    if (fromDefine.isNotEmpty) return fromDefine;
     final raw = dotenv.env['API_BASE_URL']?.trim();
     if (raw != null && raw.isNotEmpty) return raw;
     return 'http://localhost:3000';

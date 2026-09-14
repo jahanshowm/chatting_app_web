@@ -45,6 +45,27 @@ class AdminUser {
       );
 }
 
+class DashboardKpis {
+  DashboardKpis({
+    required this.activeUsers,
+    required this.newMembers,
+    required this.payments,
+    required this.thresholdSec,
+  });
+
+  final int activeUsers;
+  final int newMembers;
+  final int payments;
+  final int thresholdSec;
+
+  factory DashboardKpis.fromJson(Map<String, dynamic> json) => DashboardKpis(
+        activeUsers: _readInt(json['active_users']),
+        newMembers: _readInt(json['new_members']),
+        payments: _readInt(json['payments']),
+        thresholdSec: _readInt(json['threshold_sec']),
+      );
+}
+
 class VisitorChartPoint {
   VisitorChartPoint({
     required this.label,
