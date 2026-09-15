@@ -1,5 +1,6 @@
 /// ADMIN NET — Dio + Bearer 인터셉터
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/config/app_env.dart';
 import 'package:randomchat_admin/core/network/api_exception.dart';
@@ -26,7 +27,15 @@ class ApiClient {
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          debugPrint('[ADMIN] ${options.method} ${options.uri}');
           handler.next(options);
+        },
+        onError: (err, handler) {
+          debugPrint(
+            '[ADMIN FAIL] ${err.requestOptions.method} ${err.requestOptions.uri} '
+            'status=${err.response?.statusCode} data=${err.response?.data}',
+          );
+          handler.next(err);
         },
       ),
     );
@@ -148,21 +157,27 @@ class ApiClient {
   }
 
   ApiException _mapDioError(DioException e) {
+    final path = e.requestOptions.uri.path;
+    final status = e.response?.statusCode;
+    final suffix = status == null ? path : '$status $path';
     final data = e.response?.data;
     if (data is Map) {
       final parsed = parseApiErrorMessage(data, fallback: '');
       if (parsed.isNotEmpty) {
-        return ApiException(parsed, statusCode: e.response?.statusCode);
+        return ApiException('$parsed ($suffix)', statusCode: status);
       }
     }
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
-        return const ApiException('서버 응답 시간이 초과되었습니다.');
+        return ApiException('서버 응답 시간이 초과되었습니다. ($suffix)');
       case DioExceptionType.connectionError:
-        return const ApiException('서버에 연결할 수 없습니다.');
+        return ApiException('서버에 연결할 수 없습니다. ($suffix)');
       default:
-        return ApiException(e.message ?? '네트워크 오류가 발생했습니다.', statusCode: e.response?.statusCode);
+        return ApiException(
+          '${e.message ?? '네트워크 오류가 발생했습니다.'} ($suffix)',
+          statusCode: status,
+        );
     }
   }
 }

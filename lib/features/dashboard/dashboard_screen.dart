@@ -84,16 +84,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     setState(() => _loading = true);
     final api = ref.read(adminApiProvider);
     try {
+      final startDate = DateRangeBar.formatApi(_start);
+      final endDate = DateRangeBar.formatApi(_end);
       final results = await Future.wait([
-        api.visitors(
-          period: _period,
-          startDate: DateRangeBar.formatApi(_start),
-          endDate: DateRangeBar.formatApi(_end),
-        ),
-        api.dashboardKpis(
-          startDate: DateRangeBar.formatApi(_start),
-          endDate: DateRangeBar.formatApi(_end),
-        ),
+        api.visitors(period: _period, startDate: startDate, endDate: endDate),
+        () async {
+          try {
+            return await api.dashboardKpis(
+              startDate: startDate,
+              endDate: endDate,
+            );
+          } catch (e, st) {
+            debugPrint('[DAS-01] kpis failed: $e\n$st');
+            return DashboardKpis(
+              activeUsers: 0,
+              newMembers: 0,
+              payments: 0,
+              thresholdSec: 180,
+            );
+          }
+        }(),
         api.recentSignups(),
         api.recentPayments(),
       ]);
@@ -108,7 +118,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _payments = results[3] as List<Map<String, dynamic>>;
         _loading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[DAS-01] load failed: $e\n$st');
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));

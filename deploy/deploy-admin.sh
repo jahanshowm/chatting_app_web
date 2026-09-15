@@ -38,11 +38,25 @@ case "$REMOTE_WEB_DIR:$DEPLOY_DOMAIN" in
     ;;
 esac
 
+ENV_LOCAL_BAK=$(mktemp)
+if [[ -f "$ROOT/.env" ]]; then
+  cp "$ROOT/.env" "$ENV_LOCAL_BAK"
+else
+  ENV_LOCAL_BAK=""
+fi
+restore_local_env() {
+  if [[ -n "$ENV_LOCAL_BAK" && -f "$ENV_LOCAL_BAK" ]]; then
+    cp "$ENV_LOCAL_BAK" "$ROOT/.env"
+    rm -f "$ENV_LOCAL_BAK"
+  fi
+}
+trap restore_local_env EXIT
+
 echo "==> 빌드용 .env 적용 ($ENV_BUILD)"
 cp "$ENV_BUILD" "$ROOT/.env"
 
 if [[ "${SKIP_WEB_BUILD:-0}" != "1" ]]; then
-  echo "==> Flutter Web 빌드 (API: ${API_BASE_URL})"
+  echo "==> Flutter Web 빌드 (API: $(grep '^API_BASE_URL=' "$ENV_BUILD" | cut -d= -f2-))"
   cd "$ROOT"
   flutter pub get
   flutter build web --release
@@ -54,8 +68,7 @@ else
   echo "==> SKIP_WEB_BUILD=1 — Flutter 빌드·Web 업로드 생략"
 fi
 
-echo "==> 로컬 .env 복원 (development)"
-cp "$ROOT/.env.development" "$ROOT/.env" 2>/dev/null || true
+echo "==> 로컬 .env 복원"
 
 echo "==> 완료: https://$DEPLOY_DOMAIN"
 echo ""
