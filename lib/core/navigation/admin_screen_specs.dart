@@ -31,6 +31,7 @@ const memberNewSpec = AdminScreenSpec(
     ('all', '전체'),
     ('gender', '성별'),
     ('name', '이름'),
+    ('nickname', '닉네임'),
     ('birth_date', '생년월일'),
     ('phone_number', '휴대폰번호'),
     ('joined_at', '가입일'),

@@ -29,6 +29,9 @@ class MemberListScreen extends ConsumerStatefulWidget {
 }
 
 class _MemberListScreenState extends ConsumerState<MemberListScreen> {
+  /// 탭별 마지막 조회 기간 — 상세 → 뒤로가기 시 path에 기간이 빠져도 유지
+  static final Map<String, (DateTime, DateTime)> _lastRangeByTab = {};
+
   late String _tab = widget.tab;
   late DateTime _start;
   late DateTime _end;
@@ -88,6 +91,15 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
   void _applyQuery(AdminListQuery q, {required bool syncPath}) {
     _start = q.start;
     _end = q.end;
+    final params = Uri.parse(widget.routePath).queryParameters;
+    final remembered = _lastRangeByTab[_tab];
+    if (remembered != null &&
+        !params.containsKey('start') &&
+        !params.containsKey('end')) {
+      _start = remembered.$1;
+      _end = remembered.$2;
+    }
+    _rememberRange();
     _filter = q.filter;
     _page = q.page;
     if (_keyword.text != q.keyword) {
@@ -98,8 +110,11 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     }
   }
 
+  void _rememberRange() => _lastRangeByTab[_tab] = (_start, _end);
+
   void _persistAndLoad({bool resetPage = false}) {
     if (resetPage) _page = 1;
+    _rememberRange();
     syncAdminListPath(ref, _basePath, _query);
     _load();
   }
