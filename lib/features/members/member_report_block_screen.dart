@@ -1,6 +1,11 @@
 /// MEM — 신고·차단 회원 목록
+library;
 import 'package:data_table_2/data_table_2.dart';
-import 'package:flutter/material.dart';
+// data_table_2는 아직 flutter/material DataCell 타입을 요구
+// https://docs.flutter.dev/release/breaking-changes/material-ui-and-cupertino-ui
+// ignore: deprecated_member_use
+import 'package:flutter/material.dart' show DataCell;
+import 'package:material_ui/material_ui.dart' hide DataCell, DataColumn, DataRow;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';

@@ -1,4 +1,5 @@
 /// ADMIN API — 대시보드·회원·문의·결제·운영 REST
+library;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/network/api_client.dart';

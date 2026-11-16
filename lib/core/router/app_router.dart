@@ -1,5 +1,6 @@
 /// ADMIN ROUTER — /login·/admin 라우트·인증 redirect
-import 'package:flutter/material.dart';
+library;
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:randomchat_admin/core/navigation/admin_shell_path_provider.dart';

@@ -1,8 +1,13 @@
 /// OPS — 팝업·FCM·공지 운영관리 화면 묶음
+library;
 import 'package:data_table_2/data_table_2.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+// data_table_2는 아직 flutter/material DataCell 타입을 요구
+// https://docs.flutter.dev/release/breaking-changes/material-ui-and-cupertino-ui
+// ignore: deprecated_member_use
+import 'package:flutter/material.dart' show DataCell, DataRow;
+import 'package:material_ui/material_ui.dart' hide DataCell, DataColumn, DataRow;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/shared/utils/admin_date_format.dart';
 import 'package:randomchat_admin/shared/utils/admin_list_query.dart';

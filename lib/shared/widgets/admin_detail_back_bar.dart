@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';

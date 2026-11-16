@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 원본 비율 유지 — [maxWidth]·[maxHeight]는 **상한**만, 실제 크기는 이미지 비율로 결정.
 class AdminAspectFitImage extends StatefulWidget {

@@ -1,4 +1,5 @@
 /// ADMIN NAV — CMS 내부 path 스택
+library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'admin_url_sync.dart';
 
@@ -90,6 +91,9 @@ class AdminShellPathNotifier extends Notifier<String> {
 
   /// 「목록으로」등 — CMS 스택은 즉시 pop (popstate/ref 장애와 무관하게 UI 복귀).
   /// 웹에서는 history.back()으로 브라우저 히스토리도 맞추고, 이어지는 popstate는 무시.
+  ///
+  /// 같은 목록 path인데 스택에 기간/검색 쿼리가 빠진 경우(또는 다른 경우),
+  /// 상세에 심어 둔 [fallbackPath](`from`)를 우선해 날짜·필터를 복원한다.
   void navigateBackOr(String fallbackPath) {
     if (!canPop) {
       setPathReplace(fallbackPath);
@@ -99,12 +103,27 @@ class AdminShellPathNotifier extends Notifier<String> {
     if (adminBrowserHistoryAvailable) {
       suppressNextAdminPopState();
       _popStack();
+      _preferFallbackQuery(fallbackPath);
       goAdminBrowserBack();
       return;
     }
 
     handleBrowserBack();
+    _preferFallbackQuery(fallbackPath);
   }
+
+  void _preferFallbackQuery(String fallbackPath) {
+    if (fallbackPath.isEmpty) return;
+    final fallback = _uriOf(fallbackPath);
+    final current = _uriOf(state);
+    if (fallback.path != current.path) return;
+    if (fallback.query.isEmpty) return;
+    if (fallback.query == current.query) return;
+    setPathReplace(fallbackPath);
+  }
+
+  static Uri _uriOf(String path) =>
+      Uri.parse(path.startsWith('/') ? path : '/$path');
 }
 
 final adminShellPathProvider =

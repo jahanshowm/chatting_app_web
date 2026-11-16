@@ -124,5 +124,19 @@ void main() {
         '/members/new?start=2026-08-05&end=2026-08-05',
       );
     });
+
+    test('목록으로: 스택에 기간 없는 경로여도 from 기간 복원', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final nav = container.read(adminShellPathProvider.notifier);
+
+      const list =
+          '/members/new?start=2026-01-01&end=2026-11-09';
+      // 사이드바로 들어온 쿼리 없는 목록 위에 상세만 push된 상황
+      nav.resetTo('/members/new');
+      nav.setPath('/members/u1?from=${Uri.encodeComponent(list)}');
+      nav.navigateBackOr(list);
+      expect(container.read(adminShellPathProvider), list);
+    });
   });
 }

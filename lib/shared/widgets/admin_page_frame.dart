@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 
 /// Figma CMS 화면 ID · 부제 (breadcrumb는 AdminShell 헤더)

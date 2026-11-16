@@ -1,6 +1,11 @@
 /// MEM — 신규/탈퇴 회원 목록·검색·필터
+library;
 import 'package:data_table_2/data_table_2.dart';
-import 'package:flutter/material.dart';
+// data_table_2는 아직 flutter/material DataCell 타입을 요구
+// https://docs.flutter.dev/release/breaking-changes/material-ui-and-cupertino-ui
+// ignore: deprecated_member_use
+import 'package:flutter/material.dart' show DataCell;
+import 'package:material_ui/material_ui.dart' hide DataCell, DataColumn, DataRow;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
@@ -93,11 +98,13 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     _end = q.end;
     final params = Uri.parse(widget.routePath).queryParameters;
     final remembered = _lastRangeByTab[_tab];
+    var restoredFromMemory = false;
     if (remembered != null &&
         !params.containsKey('start') &&
         !params.containsKey('end')) {
       _start = remembered.$1;
       _end = remembered.$2;
+      restoredFromMemory = true;
     }
     _rememberRange();
     _filter = q.filter;
@@ -107,6 +114,12 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     }
     if (syncPath) {
       syncAdminListPath(ref, _basePath, _query);
+    } else if (restoredFromMemory) {
+      // initState/didUpdateWidget 중 provider 변경 방지 — 다음 프레임에 path 복원
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        syncAdminListPath(ref, _basePath, _query);
+      });
     }
   }
 

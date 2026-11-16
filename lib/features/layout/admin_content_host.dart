@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:randomchat_admin/features/dashboard/dashboard_screen.dart';
 import 'package:randomchat_admin/features/inquiries/inquiry_detail_screen.dart';
 import 'package:randomchat_admin/features/inquiries/inquiry_list_screen.dart';

@@ -1,13 +1,16 @@
-import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:material_ui/material_ui.dart';
 import 'app_colors.dart';
 
 class AppTheme {
   static ThemeData light() {
+    // google_fonts TextTheme()은 아직 flutter/material TextTheme을 반환해
+    // material_ui ThemeData와 타입이 충돌함 → fontFamily만 적용
     final fontFamily = GoogleFonts.notoSansKr().fontFamily;
 
     final base = ThemeData(
       useMaterial3: true,
+      fontFamily: fontFamily,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         primary: AppColors.primary,
@@ -17,8 +20,6 @@ class AppTheme {
     );
 
     return base.copyWith(
-      textTheme: GoogleFonts.notoSansKrTextTheme(base.textTheme),
-      primaryTextTheme: GoogleFonts.notoSansKrTextTheme(base.primaryTextTheme),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.inputBg,

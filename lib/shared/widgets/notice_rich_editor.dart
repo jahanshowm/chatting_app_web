@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_delta_from_html/flutter_quill_delta_from_html.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';

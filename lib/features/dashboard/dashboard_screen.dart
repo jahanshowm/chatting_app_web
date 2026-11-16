@@ -1,6 +1,7 @@
 /// DASH — 접속자·신규가입·결제 현황 대시보드
+library;
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';

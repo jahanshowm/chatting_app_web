@@ -1,8 +1,9 @@
 /// INQ — 문의 스레드 조회·답변(탈퇴 회원 PII 마스킹)
+library;
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
 import 'package:randomchat_admin/shared/utils/admin_date_format.dart';

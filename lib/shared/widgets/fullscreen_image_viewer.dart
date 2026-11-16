@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 문의 이미지 등 탭 시 전체화면 확대(핀치 줌)
 abstract final class FullscreenImageViewer {

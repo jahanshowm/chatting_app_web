@@ -1,9 +1,9 @@
 /// ADMIN — CMS 앱 엔트리·env·MaterialApp.router
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+library;
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:randomchat_admin/core/config/app_env.dart';
 import 'package:randomchat_admin/core/navigation/admin_shell_path_provider.dart';
 import 'package:randomchat_admin/core/navigation/admin_url_sync.dart';
@@ -66,14 +66,21 @@ class _RandomChatAdminAppState extends ConsumerState<RandomChatAdminApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       locale: const Locale('ko'),
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
+      // material_ui 공식: GlobalMaterialLocalizations.delegates
+      // + data_table_2 등 레거시 패키지용 CompatibilityBridge
+      localizationsDelegates: [
+        ...GlobalMaterialLocalizations.delegates,
         FlutterQuillLocalizations.delegate,
       ],
       supportedLocales: FlutterQuillLocalizations.supportedLocales,
       routerConfig: router,
+      builder: (context, child) {
+        // data_table_2 등 미이전 패키지용. 공식 마이그레이션 가이드 임시 브릿지
+        // ignore: deprecated_member_use
+        return MaterialUiCompatibilityBridge(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }
