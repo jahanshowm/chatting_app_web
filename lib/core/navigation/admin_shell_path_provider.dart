@@ -77,24 +77,33 @@ class AdminShellPathNotifier extends Notifier<String> {
 
   bool get canPop => _stack.length > 1;
 
-  /// 브라우저(크롬 등) 뒤로가기(popstate) — 이전 CMS 화면으로, 루트면 /admin 유지
+  /// 브라우저(크롬 등) 뒤로가기(popstate) — 이전 CMS 화면으로, 루트면 /admin 유지.
+  /// 바로 이전 화면이 같은 목록 path인데 기간 쿼리가 없으면, 상세 `from`으로 날짜를 채운다.
+  /// (회원A→회원B 체인에서는 path가 다르므로 `from`으로 점프하지 않음)
   void handleBrowserBack() {
     if (_stack.length <= 1) {
       // 히스토리 끝 — 한 번 더 뒤로 나가기 전에 /admin 엔트리 다시 쌓음
       pushAdminBrowserHistory('/admin');
       return;
     }
+    final leaving = _stack.last;
     _popStack();
+    final from = _uriOf(leaving).queryParameters['from'];
+    if (from != null && from.isNotEmpty) {
+      _preferFallbackQuery(from);
+    }
     // go_router/브라우저 URL이 / 로 바뀐 경우 /admin 으로 고정
     resetAdminBrowserHistory('/admin');
   }
 
-  /// 「목록으로」등 — CMS 스택은 즉시 pop (popstate/ref 장애와 무관하게 UI 복귀).
-  /// 웹에서는 history.back()으로 브라우저 히스토리도 맞추고, 이어지는 popstate는 무시.
-  ///
-  /// 같은 목록 path인데 스택에 기간/검색 쿼리가 빠진 경우(또는 다른 경우),
-  /// 상세에 심어 둔 [fallbackPath](`from`)를 우선해 날짜·필터를 복원한다.
+  /// 「목록으로」— [fallbackPath](`from`)로 항상 복귀 (날짜·검색 쿼리 포함).
+  /// 스택의 기간 없는 `/members/new`보다 `from`을 우선한다.
   void navigateBackOr(String fallbackPath) {
+    if (fallbackPath.isEmpty) {
+      handleBrowserBack();
+      return;
+    }
+
     if (!canPop) {
       setPathReplace(fallbackPath);
       return;
@@ -103,15 +112,16 @@ class AdminShellPathNotifier extends Notifier<String> {
     if (adminBrowserHistoryAvailable) {
       suppressNextAdminPopState();
       _popStack();
-      _preferFallbackQuery(fallbackPath);
+      setPathReplace(fallbackPath);
       goAdminBrowserBack();
       return;
     }
 
-    handleBrowserBack();
-    _preferFallbackQuery(fallbackPath);
+    _popStack();
+    setPathReplace(fallbackPath);
   }
 
+  /// 같은 목록 path일 때만 쿼리 있는 fallback으로 교체 (브라우저 뒤로가기용)
   void _preferFallbackQuery(String fallbackPath) {
     if (fallbackPath.isEmpty) return;
     final fallback = _uriOf(fallbackPath);

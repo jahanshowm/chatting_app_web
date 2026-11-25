@@ -17,3 +17,7 @@ void clearAdminPopStateHandler() {}
 void persistAdminCmsPath(String path) {}
 
 String? readPersistedAdminCmsPath() => null;
+
+void persistAdminListPath(String basePath, String listPathWithQuery) {}
+
+String? readAdminListPath(String basePath) => null;

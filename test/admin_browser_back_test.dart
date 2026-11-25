@@ -60,15 +60,19 @@ void main() {
       expect(container.read(adminShellPathProvider), '/dashboard');
     });
 
-    test('navigateBackOr: 스택 있으면 pop (fallback 불일치여도)', () {
+    test('navigateBackOr: 목록으로면 from(fallback)으로 복귀', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final nav = container.read(adminShellPathProvider.notifier);
 
+      // 회원A → 회원B 후에도 「목록으로」는 from 목록으로
       nav.resetTo('/members/a');
       nav.setPath('/members/b');
-      nav.navigateBackOr('/members/new'); // fallback 달라도 canPop이면 pop
-      expect(container.read(adminShellPathProvider), '/members/a');
+      nav.navigateBackOr('/members/new?start=2026-08-01&end=2026-08-01');
+      expect(
+        container.read(adminShellPathProvider),
+        '/members/new?start=2026-08-01&end=2026-08-01',
+      );
     });
 
     test('navigateBackOr: 스택 1이면 fallback replace', () {
@@ -92,6 +96,18 @@ void main() {
       nav.setPath(
         '/members/u1?from=${Uri.encodeComponent(list)}',
       );
+      nav.handleBrowserBack();
+      expect(container.read(adminShellPathProvider), list);
+    });
+
+    test('브라우저 back: 스택 목록에 기간 없어도 from 기간 복원', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final nav = container.read(adminShellPathProvider.notifier);
+
+      const list = '/members/new?start=2026-01-01&end=2026-11-09';
+      nav.resetTo('/members/new');
+      nav.setPath('/members/u1?from=${Uri.encodeComponent(list)}');
       nav.handleBrowserBack();
       expect(container.read(adminShellPathProvider), list);
     });
@@ -136,6 +152,42 @@ void main() {
       nav.resetTo('/members/new');
       nav.setPath('/members/u1?from=${Uri.encodeComponent(list)}');
       nav.navigateBackOr(list);
+      expect(container.read(adminShellPathProvider), list);
+    });
+
+    test('목록으로: page·날짜 포함 from 복원', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final nav = container.read(adminShellPathProvider.notifier);
+
+      const list =
+          '/members/new?start=2026-01-01&end=2026-11-09&page=3&filter=male';
+      nav.resetTo('/members/new');
+      nav.setPath(
+        Uri(
+          path: '/members/u1',
+          queryParameters: {'from': list},
+        ).toString(),
+      );
+      nav.navigateBackOr(list);
+      expect(container.read(adminShellPathProvider), list);
+    });
+
+    test('브라우저 back: page 포함 from 복원', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final nav = container.read(adminShellPathProvider.notifier);
+
+      const list =
+          '/members/new?start=2026-08-01&end=2026-08-10&page=2';
+      nav.resetTo('/members/new');
+      nav.setPath(
+        Uri(
+          path: '/members/u1',
+          queryParameters: {'from': list},
+        ).toString(),
+      );
+      nav.handleBrowserBack();
       expect(container.read(adminShellPathProvider), list);
     });
   });

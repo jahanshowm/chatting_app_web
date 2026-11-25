@@ -63,3 +63,17 @@ void persistAdminCmsPath(String path) {
 String? readPersistedAdminCmsPath() {
   return html.window.sessionStorage[_kCmsPathKey];
 }
+
+const _kListPathPrefix = 'admin_list_path:';
+
+/// 목록 전체 쿼리(날짜·페이지·검색) — 상세→뒤로가기 시 path가 비어도 복원
+void persistAdminListPath(String basePath, String listPathWithQuery) {
+  if (basePath.isEmpty || listPathWithQuery.isEmpty) return;
+  html.window.sessionStorage['$_kListPathPrefix$basePath'] = listPathWithQuery;
+}
+
+String? readAdminListPath(String basePath) {
+  final raw = html.window.sessionStorage['$_kListPathPrefix$basePath'];
+  if (raw == null || raw.isEmpty) return null;
+  return raw;
+}

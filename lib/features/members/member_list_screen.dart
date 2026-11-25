@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart' hide DataCell, DataColumn, DataRow
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:randomchat_admin/core/navigation/admin_menu.dart';
 import 'package:randomchat_admin/core/navigation/admin_screen_specs.dart';
+import 'package:randomchat_admin/core/navigation/admin_url_sync.dart';
 import 'package:randomchat_admin/core/theme/app_colors.dart';
 import 'package:randomchat_admin/data/admin_api.dart';
 import 'package:randomchat_admin/data/models/admin_models.dart';
@@ -34,8 +35,8 @@ class MemberListScreen extends ConsumerStatefulWidget {
 }
 
 class _MemberListScreenState extends ConsumerState<MemberListScreen> {
-  /// 탭별 마지막 조회 기간 — 상세 → 뒤로가기 시 path에 기간이 빠져도 유지
-  static final Map<String, (DateTime, DateTime)> _lastRangeByTab = {};
+  /// 탭별 마지막 목록 path(날짜·페이지·검색) — 상세 → 뒤로가기 복원
+  static final Map<String, String> _lastListPathByTab = {};
 
   late String _tab = widget.tab;
   late DateTime _start;
@@ -93,25 +94,36 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     super.dispose();
   }
 
-  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
-    _start = q.start;
-    _end = q.end;
+  /// path에 없는 필드(날짜·page·filter·q)는 메모리/session에서 채운다.
+  AdminListQuery _mergeWithRemembered(AdminListQuery fromPath) {
     final params = Uri.parse(widget.routePath).queryParameters;
-    final remembered = _lastRangeByTab[_tab];
-    var restoredFromMemory = false;
-    if (remembered != null &&
-        !params.containsKey('start') &&
-        !params.containsKey('end')) {
-      _start = remembered.$1;
-      _end = remembered.$2;
-      restoredFromMemory = true;
+    final rememberedPath =
+        _lastListPathByTab[_tab] ?? readAdminListPath(_basePath);
+    if (rememberedPath == null || rememberedPath.isEmpty) return fromPath;
+
+    final remembered = AdminListQuery.fromPath(rememberedPath);
+    return AdminListQuery(
+      start: params.containsKey('start') ? fromPath.start : remembered.start,
+      end: params.containsKey('end') ? fromPath.end : remembered.end,
+      filter:
+          params.containsKey('filter') ? fromPath.filter : remembered.filter,
+      keyword: params.containsKey('q') ? fromPath.keyword : remembered.keyword,
+      page: params.containsKey('page') ? fromPath.page : remembered.page,
+    );
+  }
+
+  void _applyQuery(AdminListQuery q, {required bool syncPath}) {
+    final merged = _mergeWithRemembered(q);
+    final restoredFromMemory = !merged.sameAs(q);
+
+    _start = merged.start;
+    _end = merged.end;
+    _filter = merged.filter;
+    _page = merged.page;
+    if (_keyword.text != merged.keyword) {
+      _keyword.text = merged.keyword;
     }
-    _rememberRange();
-    _filter = q.filter;
-    _page = q.page;
-    if (_keyword.text != q.keyword) {
-      _keyword.text = q.keyword;
-    }
+    _rememberListPath();
     if (syncPath) {
       syncAdminListPath(ref, _basePath, _query);
     } else if (restoredFromMemory) {
@@ -123,11 +135,15 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
     }
   }
 
-  void _rememberRange() => _lastRangeByTab[_tab] = (_start, _end);
+  void _rememberListPath() {
+    final path = _listPathWithQuery;
+    _lastListPathByTab[_tab] = path;
+    persistAdminListPath(_basePath, path);
+  }
 
   void _persistAndLoad({bool resetPage = false}) {
     if (resetPage) _page = 1;
-    _rememberRange();
+    _rememberListPath();
     syncAdminListPath(ref, _basePath, _query);
     _load();
   }
@@ -261,10 +277,13 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
   // }
 
   void _openDetail(String id) {
-    adminNavigate(
-      ref,
-      '/members/$id?from=${Uri.encodeComponent(_listPathWithQuery)}',
-    );
+    // Uri.queryParameters로 from을 넣어 ?& 중첩이 깨지지 않게 함
+    _rememberListPath();
+    final detailPath = Uri(
+      path: '/members/$id',
+      queryParameters: {'from': _listPathWithQuery},
+    ).toString();
+    adminNavigate(ref, detailPath);
   }
 
   @override

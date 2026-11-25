@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:randomchat_admin/shared/utils/admin_list_query.dart';
+import 'package:randomchat_admin/shared/widgets/date_range_bar.dart';
 
 void main() {
   group('AdminListQuery', () {
@@ -20,6 +21,21 @@ void main() {
 
       final restored = AdminListQuery.fromPath(path);
       expect(restored.sameAs(q), isTrue);
+    });
+
+    test('detail from 쿼리에 page 포함해도 파싱 유지', () {
+      const list =
+          '/members/new?start=2026-08-01&end=2026-08-10&page=3&filter=female';
+      final detail = Uri(
+        path: '/members/u1',
+        queryParameters: {'from': list},
+      ).toString();
+      final from = Uri.parse(detail).queryParameters['from'];
+      expect(from, list);
+      final restored = AdminListQuery.fromPath(from!);
+      expect(restored.page, 3);
+      expect(restored.filter, 'female');
+      expect(DateRangeBar.formatApi(restored.start), '2026-08-01');
     });
 
     test('쿼리 없으면 오늘 날짜 기본', () {
